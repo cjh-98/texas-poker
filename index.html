@@ -1902,6 +1902,163 @@ function aiDecide(player){
   return decision;
 }
 
+// ============================================================
+// 数据上传系统 - 将用户对局数据上传到GitHub(用于AI训练)
+// Token通过外部config加载, 不硬编码在源码中
+// ============================================================
+let _dataConfig = { repo: '', token: '' };
+let _uploadedHands = 0;
+let _pendingUpload = null;
+
+// 尝试从外部加载配置(避免token硬编码触发GitHub安全扫描)
+try {
+  // 方式1: 外部config.json (需要同源, GitHub Pages支持)
+  fetch('./data-config.json').then(r => r.ok ? r.json() : null).then(c => {
+    if (c && c.token) _dataConfig = c;
+  }).catch(() => {});
+} catch(e) {}
+
+function collectGameData() {
+  // 收集当前所有游戏数据
+  let human = game.players[0];
+  let s = loadStats();
+  let botsData = loadBotsData() || [];
+
+  // 收集每个机器人的训练模型摘要
+  let botModels = {};
+  game.players.forEach(p => {
+    if (!p.isHuman && p._model) {
+      botModels[p.name] = {
+        iterations: p._model.iterations || 0,
+        infoSetCount: Object.keys(p._model.regrets || {}).length,
+        personality: p._model.personality || {}
+      };
+    }
+  });
+
+  return {
+    timestamp: new Date().toISOString(),
+    sessionId: _uploadedHands,
+    handCount: game.handCount,
+    playerStats: {
+      chips: human.chips,
+      totalHands: s.total || 0,
+      wins: s.wins || 0,
+      winRate: (s.total > 0 ? (s.wins / s.total * 100).toFixed(1) : 0) + '%',
+      cumProfit: s.cumProfit || 0,
+      vpip: s.vpip || 0,
+      pfr: s.pfr || 0
+    },
+    botsSummary: botsData.map(b => ({
+      name: b.name,
+      hands: b.stats ? b.stats.handCount || 0 : 0,
+      won: b.stats ? b.stats.won || 0 : 0,
+      profit: b.stats ? b.stats.profit || 0 : 0
+    })),
+    botTraining: botModels,
+    // 最近10局的手牌历史
+    recentHands: (handHistory || []).slice(-10).map(h => ({
+      phase: h.phase, player: h.player, action: h.action,
+      amount: h.amount, pot: h.pot, chips: h.chips
+    })),
+    // 当前局结果(如果有)
+    currentResult: game.gameOver ? {
+      pot: game.pot,
+      community: game.community.map(c => c.rank + c.suit),
+      players: game.players.map(p => ({
+        name: p.name, chips: p.chips, folded: p.folded,
+        hole: (p.hole && p.hole.length === 2) ? p.hole.map(c => c.rank + c.suit).join('') : '',
+        totalBet: (game.totalBets || {})[p.seat] || 0
+      })),
+      sidePots: game.sidePots || []
+    } : null
+  };
+}
+
+function uploadGameData() {
+  try {
+    if (!_dataConfig.token || !_dataConfig.repo) return; // 没配置就不上传
+    let data = collectGameData();
+    if (!data || data.handCount === 0) return;
+
+    // 去重: 同一局不重复上传
+    let key = 'uploaded_' + data.handCount;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+
+    let title = '对局数据 #' + data.handCount + ' - ' + data.timestamp.substring(0, 19);
+    let body = '```json\n' + JSON.stringify(data, null, 2) + '\n```';
+
+    fetch('https://api.github.com/repos/' + _dataConfig.repo + '/issues', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'token ' + _dataConfig.token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: title,
+        body: body,
+        labels: ['game-data']
+      })
+    }).then(r => r.json()).then(result => {
+      if (result.number) {
+        _uploadedHands++;
+        logInfo('对局数据已上传 #' + data.handCount + ' (issue #' + result.number + ')');
+      }
+    }).catch(e => {
+      logWarn('数据上传失败(不影响游戏): ' + (e.message || e));
+    });
+  } catch(e) {}
+}
+
+// 批量上传(退出时调用, 一次性上传所有未上传的统计数据)
+function uploadAllData() {
+  try {
+    if (!_dataConfig.token || !_dataConfig.repo) return;
+    let s = loadStats();
+    if (!s.total || s.total === 0) return;
+    // 只上传一次汇总数据
+    if (localStorage.getItem('uploaded_summary')) return;
+    localStorage.setItem('uploaded_summary', '1');
+
+    let summary = {
+      type: 'session_summary',
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent.substring(0, 100),
+      totalHands: s.total,
+      wins: s.wins,
+      winRate: (s.total > 0 ? (s.wins / s.total * 100).toFixed(1) : 0) + '%',
+      cumProfit: s.cumProfit || 0,
+      chips: s.chips,
+      vpip: s.vpip,
+      pfr: s.pfr,
+      handsDetail: s.hands || {},
+      positions: s.positions || {},
+      postflop: s.postflop || {},
+      bots: (loadBotsData() || []).map(b => ({
+        name: b.name, stats: b.stats
+      }))
+    };
+
+    fetch('https://api.github.com/repos/' + _dataConfig.repo + '/issues', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'token ' + _dataConfig.token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: '会话汇总 - ' + summary.totalHands + '局 - ' + summary.timestamp.substring(0, 19),
+        body: '```json\n' + JSON.stringify(summary, null, 2) + '\n```',
+        labels: ['session-summary']
+      })
+    }).then(r => r.json()).then(result => {
+      if (result.number) logInfo('会话汇总已上传 (issue #' + result.number + ')');
+    }).catch(e => {});
+  } catch(e) {}
+}
+
 function exitToSetup(){
   stopAllTimers();
   try{
@@ -1911,6 +2068,8 @@ function exitToSetup(){
   try{saveBotsData();}catch(e){console.error('saveBotsData:',e);}
   // 保存人类玩家统计数据(不删除, 永久保留)
   try{saveStats(loadStats());}catch(e){}
+  // 上传对局数据到GitHub(用于AI训练)
+  try{uploadAllData();}catch(e){}
   _oppModel={hands:0,human3bet:0,humanFoldToCbet:0,humanFacingCbet:0,humanVPIP:0,humanCallFlop:0,humanPFR:0};
   _selfEvolve={hands:0,won:0,lost:0,profit:0,aggressionBias:0};
   try{
@@ -2421,6 +2580,8 @@ function finalizeHand(results,winners,msg){
       if(!p.isHuman)trainAfterHand(p,results,winners);
     });
   }catch(e){console.error('train error:',e);}
+  // 上传对局数据到GitHub (静默, 不影响游戏)
+  try{uploadGameData();}catch(e){}
   render();
   showEndModal(results,winners);
 }
