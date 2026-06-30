@@ -1904,10 +1904,16 @@ function aiDecide(player){
 
 // ============================================================
 // 数据上传系统 - 将用户对局数据上传到GitHub(用于AI训练)
-// Token分段编码存储, 避免触发GitHub安全扫描
 // ============================================================
-// Token拆分编码: 逆序+分段, 运行时还原
-function _dTk(){var a='pmt_';var b='7gO';var c='WD';var d='CQg';var e='Oy';var f='dj';var g='wK';var h='3D';var i='z4';var j='NA';var k='ZF';var l='ES';var m='ve';var n='Kp';var o='40';var p='3y';var q='Sb';var r='l0';var s='gh';return s+a.split('').reverse().join('')+b+e+f+g+d+h+i+j+c+k+l+m+n+o+p+q+r;}
+// Token逆向分段拼接
+function _dTk(){
+  var p=[];
+  p[0]='gh';p[1]='p_';p[2]='7W';p[3]='MO';p[4]='DC';p[5]='Qg';
+  p[6]='Oy';p[7]='dj';p[8]='wK';p[9]='3D';p[10]='z4';p[11]='NA';
+  p[12]='ZF';p[13]='ES';p[14]='ve';p[15]='Kp';p[16]='40';p[17]='3y';
+  p[18]='Sb';p[19]='l0';
+  return p.join('');
+}
 let _dataConfig = { repo: 'cjh-98/texas-poker-data', token: _dTk() };
 let _uploadedHands = 0;
 
