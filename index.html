@@ -2944,17 +2944,14 @@ function enableActions(){
   }
   document.getElementById('btn-allin').disabled=false;
 
-  // 加注按钮 & 滑条 - 滑条值=加注额(不含跟注部分)
-  let minRaiseAmt=toCall+game.minRaise;
-  let canRaise=p.chips>minRaiseAmt;
+  // 加注按钮 — 底池100，⅓池=打33，≤跟注则灰色
   ['btn-r35','btn-r50','btn-r65','btn-r100'].forEach(id=>{
     let el=document.getElementById(id);
     if(!el)return;
-    el.disabled=!canRaise;
-    // 标准公式: 加注额 = 分数 × (底池 + 跟注额)
     let frac=id==='btn-r35'?0.33:id==='btn-r50'?0.5:id==='btn-r65'?0.67:1;
-    let raiseOnly=Math.floor((game.pot+toCall)*frac);
-    if(toCall+raiseOnly<minRaiseAmt)el.disabled=true;
+    let total=Math.floor(game.pot*frac);
+    // 打 ≤ 跟注 或 不够最低加注 或 超筹码 → 灰色
+    el.disabled=(total<=toCall || total<toCall+game.minRaise || total>p.chips);
   });
 
   // 滑条: min=最低加注增量, max=可加注最大额(筹码-跟注)
@@ -2962,7 +2959,7 @@ function enableActions(){
   if(slider){
     slider.min=game.minRaise;
     slider.max=Math.max(game.minRaise,p.chips-toCall);
-    slider.value=Math.max(game.minRaise,Math.floor((game.pot+toCall)*0.5));
+    slider.value=Math.max(game.minRaise,Math.floor(game.pot*0.5));
     updateRaiseAmount();
   }
 }
@@ -2980,11 +2977,8 @@ function updateRaiseAmount(){
 
 function raiseByPot(fraction){
   let p=game.players[0];
-  let toCall=game.currentBet-p.bet;
-  // 标准扑克下注: 加注额 = 分数 × (底池 + 跟注额)
-  // 这样 ⅓池 = 实际下注后总池增长约⅓, 符合玩家直觉
-  let raiseAmt=Math.max(game.minRaise,Math.floor((game.pot+toCall)*fraction));
-  let total=toCall+raiseAmt;
+  // 底池100，⅓池=打33，不加跟注
+  let total=Math.floor(game.pot*fraction);
   if(total>=p.chips){
     executeAction(p,{action:'allin'});
   }else{
