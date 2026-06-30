@@ -34,13 +34,13 @@ body{
 
 /* 顶栏 */
 #topbar{
-  background:rgba(0,0,0,0.85);padding:6px 10px;display:flex;align-items:center;
+  background:rgba(0,0,0,0.85);padding:6px 8px;display:flex;align-items:center;
   justify-content:space-between;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.1);
-  gap:4px;flex-wrap:nowrap
+  gap:3px;flex-wrap:nowrap;overflow:hidden
 }
-#topbar .title{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap}
-#topbar .info{font-size:10px;color:var(--gray);white-space:nowrap}
-#topbar button{flex-shrink:0}
+#topbar .title{font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap;flex-shrink:0}
+#topbar .info{font-size:9px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+#topbar button{flex-shrink:0;font-size:9px;padding:3px 6px}
 
 /* 桌面 */
 #table{
@@ -123,12 +123,12 @@ body{
 
 /* 操作栏 */
 #action-bar{
-  background:var(--panel-bg);padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;flex-wrap:wrap;
+  background:var(--panel-bg);padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;flex-wrap:wrap;
   justify-content:center;border-top:1px solid rgba(255,255,255,0.1)
 }
 #action-bar button{
-  padding:10px 14px;border:none;border-radius:8px;font-size:14px;font-weight:700;
-  cursor:pointer;color:#fff;min-width:50px;transition:all 0.15s
+  padding:14px 20px;border:none;border-radius:10px;font-size:15px;font-weight:700;
+  cursor:pointer;color:#fff;min-width:60px;transition:all 0.15s
 }
 #action-bar button:active{transform:scale(0.95)}
 #action-bar button:disabled{opacity:0.3;pointer-events:none}
@@ -183,8 +183,11 @@ body{
   .your-card{width:44px;height:64px;font-size:12px}.your-card .suit{font-size:17px}
   .community-card{width:30px;height:44px;font-size:8px}
   .player-seat .mini-card{width:20px;height:30px;font-size:6px}
-  #action-bar button{padding:8px 10px;font-size:12px;min-width:40px}
+  #action-bar button{padding:12px 16px;font-size:13px;min-width:50px}
   #your-hand{bottom:110px}
+  #topbar .title{font-size:10px}
+  #topbar .info{font-size:8px;max-width:80px}
+  #topbar button{font-size:8px;padding:2px 4px}
 }
 </style>
 </head>
@@ -208,6 +211,18 @@ body{
     <button onclick="exitToSetup()" style="background:rgba(255,100,100,0.15);border:1px solid rgba(255,100,100,0.3);color:#f66;padding:4px 8px;border-radius:4px;font-size:10px">🚪 退出</button>
   </div>
 
+  <!-- 阶段指示器 -->
+  <div id="phase-indicator" style="display:flex;justify-content:center;align-items:center;padding:6px 10px;background:rgba(0,0,0,0.6);gap:16px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">
+    <span id="phase-preflop" style="color:var(--gold);font-weight:700">🔄 翻牌前</span>
+    <span style="color:rgba(255,255,255,0.15)">→</span>
+    <span id="phase-flop" style="color:rgba(255,255,255,0.25)">翻牌</span>
+    <span style="color:rgba(255,255,255,0.15)">→</span>
+    <span id="phase-turn" style="color:rgba(255,255,255,0.25)">转牌</span>
+    <span style="color:rgba(255,255,255,0.15)">→</span>
+    <span id="phase-river" style="color:rgba(255,255,255,0.25)">河牌</span>
+    <span style="color:#8b949e;margin-left:8px;font-size:10px">底池: <span id="phase-pot" style="color:var(--gold);font-weight:700">0</span></span>
+  </div>
+
   <div id="table">
     <div id="community"></div>
     <div id="pot-display" style="text-align:center"></div>
@@ -218,14 +233,14 @@ body{
     <button class="btn-fold" id="btn-fold" onclick="playerAction('fold')">弃牌</button>
     <button class="btn-check" id="btn-check" onclick="playerAction('check')">过牌</button>
     <button class="btn-call" id="btn-call" onclick="playerAction('call')">跟注</button>
-    <div style="display:flex;align-items:center;gap:3px;width:100%">
-      <button class="btn-raise" id="btn-r35" onclick="raiseByPot(0.33)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注⅓底池">+⅓池</button>
-      <button class="btn-raise" id="btn-r50" onclick="raiseByPot(0.5)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注½底池">+½池</button>
-      <button class="btn-raise" id="btn-r65" onclick="raiseByPot(0.67)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注⅔底池">+⅔池</button>
-      <button class="btn-raise" id="btn-r100" onclick="raiseByPot(1.0)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注满池">+满池</button>
-      <input type="range" id="raise-slider" min="0" max="100" value="50" oninput="updateRaiseAmount()" style="flex:1;min-width:60px">
-      <span id="raise-amount" style="font-size:11px;color:var(--gold);min-width:40px;text-align:center">+50</span>
-      <button class="btn-raise" id="btn-raise" onclick="playerAction('raise')" style="font-size:11px;padding:6px 8px">加注</button>
+    <div style="display:flex;align-items:center;gap:4px;width:100%;margin:2px 0">
+      <button class="btn-raise" id="btn-r35" onclick="raiseByPot(0.33)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注⅓底池">⅓池</button>
+      <button class="btn-raise" id="btn-r50" onclick="raiseByPot(0.5)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注½底池">½池</button>
+      <button class="btn-raise" id="btn-r65" onclick="raiseByPot(0.67)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注⅔底池">⅔池</button>
+      <button class="btn-raise" id="btn-r100" onclick="raiseByPot(1.0)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注满池">满池</button>
+      <input type="range" id="raise-slider" min="0" max="100" value="50" oninput="updateRaiseAmount()" style="flex:1;min-width:40px">
+      <span id="raise-amount" style="font-size:13px;color:var(--gold);min-width:44px;text-align:center;font-weight:700">+50</span>
+      <button class="btn-raise" id="btn-raise" onclick="playerAction('raise')" style="font-size:13px;padding:10px 10px;min-width:44px">加注</button>
     </div>
     <button class="btn-allin" id="btn-allin" onclick="playerAction('allin')">All-in</button>
   </div>
@@ -3272,6 +3287,30 @@ function render(){
 
   document.getElementById('table-info').textContent=
     `${game.phase==='preflop'?'翻牌前':game.phase==='flop'?'翻牌':game.phase==='turn'?'转牌':'河牌'} | ${SMALL_BLIND}/${BIG_BLIND} | #${game.handCount||0}`;
+
+  // 更新阶段指示器
+  let phases = ['preflop','flop','turn','river'];
+  let phaseNames = ['翻牌前','翻牌','转牌','河牌'];
+  let currentIdx = phases.indexOf(game.phase);
+  phases.forEach(function(ph, i) {
+    var el = document.getElementById('phase-' + ph);
+    if (el) {
+      if (i < currentIdx) {
+        el.style.color = 'rgba(255,255,255,0.35)';
+        el.style.fontWeight = '400';
+      } else if (i === currentIdx) {
+        el.style.color = 'var(--gold)';
+        el.style.fontWeight = '700';
+        el.textContent = (i === 0 ? '🔄 ' : '▸ ') + phaseNames[i];
+      } else {
+        el.style.color = 'rgba(255,255,255,0.25)';
+        el.style.fontWeight = '400';
+        el.textContent = phaseNames[i];
+      }
+    }
+  });
+  var potEl = document.getElementById('phase-pot');
+  if (potEl) potEl.textContent = game.pot;
 }
 
 function actionLabel(a){
