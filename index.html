@@ -18,176 +18,233 @@
 <title>德州扑克 人机对战</title>
 <style>
 :root{
-  --bg:#0a1a0a;--table:#1a5c1a;--felt:#1e7e1e;--gold:#d4a84b;--chip:#d4a84b;
-  --white:#f0f0e0;--red:#e04040;--blue:#4080e0;--green:#40a040;--gray:#708070;
-  --card-bg:#fff;--card-red:#d04040;--card-black:#202020;
-  --btn-primary:#1a6b3a;--btn-danger:#9b3030;--btn-warn:#a08020;--btn-info:#3050a0;
-  --panel-bg:rgba(0,0,0,0.7);--text:#e0e0d0;
+  --bg:#0d1f0d;--table:#1a6a1a;--felt:#2a8a2a;--gold:#e8c45e;--gold-dim:#c4a040;--chip:#e8c45e;
+  --white:#f5f5e8;--red:#e04040;--blue:#4080e0;--green:#40c060;--gray:#8a9a8a;
+  --card-bg:#fffef8;--card-red:#c02020;--card-black:#1a1a1a;
+  --btn-primary:#1d8a4a;--btn-danger:#a83838;--btn-warn:#b89020;--btn-info:#3858b0;
+  --panel-bg:rgba(8,18,8,0.92);--text:#e8e8d8;
+  --rail:#3a2810;--rail-light:#5a4020;
+  --glow:rgba(232,196,94,0.5);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
-  background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(180deg,#0a1a0a 0%,#0d200d 100%);color:var(--text);min-height:100vh;overflow-x:hidden;
   user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
 }
 #app{max-width:500px;margin:0 auto;position:relative;min-height:100vh;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 
-/* 顶栏 */
+/* ========== 顶栏 ========== */
 #topbar{
-  background:rgba(0,0,0,0.85);padding:6px 8px;display:flex;align-items:center;
-  justify-content:space-between;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.1);
-  gap:3px;flex-wrap:nowrap;overflow:hidden
+  background:linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.75));
+  padding:8px 10px;display:flex;align-items:center;
+  justify-content:space-between;gap:6px;flex-wrap:nowrap;
+  border-bottom:2px solid rgba(232,196,94,0.25);
+  box-shadow:0 2px 12px rgba(0,0,0,0.4)
 }
-#topbar .title{font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap;flex-shrink:0}
-#topbar .info{font-size:9px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-#topbar button{flex-shrink:0;font-size:9px;padding:3px 6px}
+#topbar .title{font-size:15px;font-weight:800;color:var(--gold);white-space:nowrap;flex-shrink:0;
+  text-shadow:0 0 8px rgba(232,196,94,0.3)}
+#topbar .info{font-size:11px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;flex-shrink:1}
+#topbar button{
+  flex-shrink:0;font-size:12px;padding:7px 10px;border-radius:8px;font-weight:700;
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
+  color:var(--text);cursor:pointer;transition:all 0.15s
+}
+#topbar button:active{transform:scale(0.93);background:rgba(232,196,94,0.15)}
 
-/* 桌面 */
+/* ========== 阶段指示器 ========== */
+#phase-indicator{
+  display:flex;justify-content:center;align-items:center;
+  padding:8px 12px;gap:10px;font-size:13px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.5),rgba(0,0,0,0.3));
+  border-bottom:1px solid rgba(232,196,94,0.1)
+}
+#phase-indicator span{transition:all 0.3s;white-space:nowrap}
+.phase-arrow{color:rgba(255,255,255,0.15);font-size:11px}
+.phase-pot-wrap{
+  margin-left:auto;background:rgba(0,0,0,0.4);padding:3px 10px;border-radius:10px;
+  border:1px solid rgba(232,196,94,0.2)
+}
+
+/* ========== 桌面 ========== */
 #table{
-  flex:1;background:radial-gradient(ellipse at center,#2a8a2a 0%,#1a5a1a 60%,#0a3a0a 100%);
-  position:relative;min-height:400px;border:6px solid #4a3020;border-radius:50%;
-  margin:10px 5px;box-shadow:0 0 40px rgba(0,0,0,0.5),inset 0 0 80px rgba(0,0,0,0.3);
+  flex:1;
+  background:radial-gradient(ellipse at center,#2e8e2e 0%,#1e6e1e 50%,#0e3e0e 100%);
+  position:relative;min-height:420px;
+  border:7px solid var(--rail);border-radius:48%;
+  margin:8px 6px;
+  box-shadow:
+    0 0 30px rgba(0,0,0,0.6),
+    inset 0 0 100px rgba(0,0,0,0.35),
+    inset 0 0 20px rgba(232,196,94,0.05);
   overflow:hidden
 }
-
-/* 公共牌区 */
-#community{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);display:flex;gap:3px}
-.community-card{
-  width:36px;height:52px;background:var(--card-bg);border-radius:3px;
-  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;
-  box-shadow:1px 1px 3px rgba(0,0,0,0.3);flex-direction:column;line-height:1
+/* 桌面内圈装饰线 */
+#table::before{
+  content:'';position:absolute;top:8%;left:8%;right:8%;bottom:8%;
+  border:2px solid rgba(232,196,94,0.1);border-radius:45%;
+  pointer-events:none
 }
-.community-card .suit{font-size:14px}
+
+/* ========== 公共牌区 ========== */
+#community{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);display:flex;gap:4px;z-index:3}
+.community-card{
+  width:42px;height:60px;background:var(--card-bg);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;
+  box-shadow:1px 2px 5px rgba(0,0,0,0.35);flex-direction:column;line-height:1;
+  border:0.5px solid rgba(0,0,0,0.08);transition:all 0.3s
+}
+.community-card .suit{font-size:17px;margin-bottom:1px}
 .community-card.red{color:var(--card-red)}
 .community-card.black{color:var(--card-black)}
-.community-card.flipped{box-shadow:0 0 6px rgba(212,168,75,0.4)}
+.community-card.flipped{box-shadow:0 0 10px var(--glow),1px 2px 5px rgba(0,0,0,0.35)}
 .community-card.unflipped{
-  background:linear-gradient(135deg,#1a3a6a,#2a5aaa);color:rgba(255,255,255,0.3);
-  font-size:16px;font-weight:900;opacity:0.5
+  background:linear-gradient(135deg,#1a3a7a,#2a6aba);color:rgba(255,255,255,0.25);
+  font-size:18px;font-weight:900;opacity:0.55;box-shadow:1px 2px 5px rgba(0,0,0,0.3);
+  border:1px solid rgba(255,255,255,0.1)
 }
 .card-back{
-  background:linear-gradient(135deg,#1a3a6a,#2a5aaa);color:rgba(255,255,255,0.3);
-  font-size:18px
+  background:linear-gradient(135deg,#1a3a7a,#2a6aba);color:rgba(255,255,255,0.25);
+  font-size:20px
 }
 
-/* 玩家位置 */
+/* ========== 玩家座位 ========== */
 .player-seat{
-  position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;
-  transition:all 0.3s
+  position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:all 0.3s;z-index:2
 }
-.player-seat .name{font-size:10px;color:var(--white);font-weight:600;text-shadow:0 1px 2px #000}
-.player-seat .chips{font-size:9px;color:var(--gold)}
-.player-seat .bet{font-size:11px;color:var(--white);font-weight:700;background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:8px}
-.player-seat .cards-row{display:flex;gap:1px}
+.player-seat .name{font-size:12px;color:var(--white);font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.8)}
+.player-seat .chips{font-size:11px;color:var(--gold);font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.6)}
+.player-seat .bet{
+  font-size:12px;color:var(--white);font-weight:700;
+  background:rgba(0,0,0,0.6);padding:2px 8px;border-radius:10px;
+  border:1px solid rgba(232,196,94,0.2)
+}
+.player-seat .cards-row{display:flex;gap:2px}
 .player-seat .mini-card{
-  width:24px;height:36px;background:var(--card-bg);border-radius:2px;
-  display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;
-  flex-direction:column;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,0.3)
+  width:28px;height:40px;background:var(--card-bg);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;
+  flex-direction:column;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  border:0.5px solid rgba(0,0,0,0.08)
 }
-.player-seat .mini-card .suit{font-size:10px}
-.player-seat .mini-card.red{color:var(--card-red)}.player-seat .mini-card.black{color:var(--card-black)}
-.mini-card-back{background:linear-gradient(135deg,#1a3a6a,#2a5aaa);color:rgba(255,255,255,0.3);font-size:12px}
-.player-seat .dealer{font-size:9px;background:var(--gold);color:#000;padding:0 5px;border-radius:4px;font-weight:700}
-.player-seat .blind-badge{font-size:8px;padding:0 4px;border-radius:3px;font-weight:700;color:#fff}
-.player-seat .blind-sb{background:#3070c0}
-.player-seat .blind-bb{background:#c04040}
+.player-seat .mini-card .suit{font-size:12px;margin-bottom:1px}
+.player-seat .mini-card.red{color:var(--card-red)}
+.player-seat .mini-card.black{color:var(--card-black)}
+.mini-card-back{background:linear-gradient(135deg,#1a3a7a,#2a6aba);color:rgba(255,255,255,0.25);font-size:14px}
+.player-seat .dealer{font-size:10px;background:var(--gold);color:#1a1a1a;padding:1px 6px;border-radius:5px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.player-seat .blind-badge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;color:#fff}
+.player-seat .blind-sb{background:#3060d0;box-shadow:0 1px 2px rgba(0,0,0,0.3)}
+.player-seat .blind-bb{background:#c03030;box-shadow:0 1px 2px rgba(0,0,0,0.3)}
 .player-seat .action-badge{
-  font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700;white-space:nowrap
+  font-size:9px;padding:2px 7px;border-radius:5px;font-weight:700;white-space:nowrap;
+  background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.08)
 }
-.player-seat.folded{opacity:0.4}
-.player-seat.active .name{color:var(--gold)}
-.player-seat.highlight{animation:pulse 0.8s infinite}
-@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4)}}
+.player-seat.folded{opacity:0.35}
+.player-seat.active .name{color:var(--gold);text-shadow:0 0 6px rgba(232,196,94,0.4)}
+.player-seat.highlight{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{filter:brightness(1) drop-shadow(0 0 0 transparent)}50%{filter:brightness(1.35) drop-shadow(0 0 6px var(--glow))}}
 
 /* 玩家位置 - 6人桌布局 */
-#seat0{top:82%;left:50%;transform:translateX(-50%)}  /* 你 - 底部(只显示名字和筹码) */
-#seat1{top:60%;left:8%}   /* 左下 */
-#seat2{top:20%;left:15%}  /* 左上 */
-#seat3{top:8%;left:50%;transform:translateX(-50%)}  /* 顶部 */
-#seat4{top:20%;right:15%}  /* 右上 */
-#seat5{top:60%;right:8%}   /* 右下 */
+#seat0{top:82%;left:50%;transform:translateX(-50%)}
+#seat1{top:58%;left:7%}
+#seat2{top:18%;left:13%}
+#seat3{top:6%;left:50%;transform:translateX(-50%)}
+#seat4{top:18%;right:13%}
+#seat5{top:58%;right:7%}
 
-/* 你手牌 */
-#your-hand{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5}
+/* ========== 你的手牌 ========== */
+#your-hand{position:absolute;bottom:125px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}
 .your-card{
-  width:52px;height:74px;background:var(--card-bg);border-radius:5px;
-  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;
-  flex-direction:column;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.4);
-  border:1px solid rgba(0,0,0,0.1)
+  width:58px;height:82px;background:var(--card-bg);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;
+  flex-direction:column;line-height:1;
+  box-shadow:0 3px 10px rgba(0,0,0,0.45),0 0 8px rgba(232,196,94,0.1);
+  border:1px solid rgba(0,0,0,0.08);transition:all 0.2s
 }
-.your-card .suit{font-size:20px}
-.your-card.red{color:var(--card-red)}.your-card.black{color:var(--card-black)}
+.your-card .suit{font-size:24px;margin-bottom:2px}
+.your-card.red{color:var(--card-red)}
+.your-card.black{color:var(--card-black)}
 
-/* 底池 */
-#pot-display{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin-top:-30px}
+/* ========== 底池 ========== */
+#pot-display{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);z-index:4;text-align:center}
 
-/* 操作栏 */
+/* ========== 操作栏 ========== */
 #action-bar{
-  background:var(--panel-bg);padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;flex-wrap:wrap;
-  justify-content:center;border-top:1px solid rgba(255,255,255,0.1)
+  background:var(--panel-bg);padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));
+  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+  border-top:2px solid rgba(232,196,94,0.2);
+  box-shadow:0 -2px 12px rgba(0,0,0,0.3)
 }
 #action-bar button{
-  padding:14px 20px;border:none;border-radius:10px;font-size:15px;font-weight:700;
-  cursor:pointer;color:#fff;min-width:60px;transition:all 0.15s
+  padding:14px 20px;border:none;border-radius:10px;font-size:15px;font-weight:800;
+  cursor:pointer;color:#fff;min-width:62px;transition:all 0.15s;
+  box-shadow:0 2px 6px rgba(0,0,0,0.3)
 }
-#action-bar button:active{transform:scale(0.95)}
+#action-bar button:active{transform:scale(0.94)}
 #action-bar button:disabled{opacity:0.3;pointer-events:none}
-.btn-fold{background:var(--btn-danger)}.btn-check{background:var(--btn-info)}
-.btn-call{background:var(--btn-primary)}.btn-raise{background:var(--btn-warn)}
-.btn-allin{background:linear-gradient(135deg,#c04040,#802020)}
-#raise-slider{width:100%;margin:0 5px;accent-color:var(--gold)}.raise-amount{font-size:11px;color:var(--gold);text-align:center;min-width:40px}
+.btn-fold{background:linear-gradient(135deg,#b83838,#883030)}
+.btn-check{background:linear-gradient(135deg,#3858b0,#284890)}
+.btn-call{background:linear-gradient(135deg,#1d8a4a,#15703a)}
+.btn-raise{background:linear-gradient(135deg,#c8a030,#a08020)}
+.btn-allin{background:linear-gradient(135deg,#d04040,#802020)}
+#raise-slider{width:100%;margin:0 5px;accent-color:var(--gold)}
+.raise-amount{font-size:13px;color:var(--gold);text-align:center;min-width:44px;font-weight:700}
 
-/* 弹窗 */
-.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:100;
+/* ========== 弹窗 ========== */
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:100;
   display:flex;align-items:center;justify-content:center}
 .modal-content{
   background:linear-gradient(135deg,#1a2a1a,#0a1a0a);border:2px solid var(--gold);
-  border-radius:12px;padding:24px;max-width:380px;width:90%;text-align:center;color:var(--text);
-  max-height:90vh;overflow-y:auto;
-  -webkit-overflow-scrolling:touch
+  border-radius:14px;padding:24px;max-width:380px;width:90%;text-align:center;color:var(--text);
+  max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  box-shadow:0 0 40px rgba(232,196,94,0.15),0 8px 30px rgba(0,0,0,0.5)
 }
-.modal h2{color:var(--gold);margin-bottom:12px;font-size:20px}
+.modal h2{color:var(--gold);margin-bottom:12px;font-size:20px;text-shadow:0 0 10px rgba(232,196,94,0.3)}
 .modal button{
   padding:10px 24px;margin:6px;border:none;border-radius:8px;font-size:15px;font-weight:700;
-  cursor:pointer;color:#fff;min-width:100px
+  cursor:pointer;color:#fff;min-width:100px;transition:all 0.15s
 }
 .modal select{
   padding:8px 12px;border:1px solid var(--gold);border-radius:6px;background:#1a2a1a;
   color:var(--text);font-size:15px;margin:8px 0;width:80%
 }
 
-/* 统计面板 */
+/* ========== 统计面板 ========== */
 #stats-panel{
-  position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:200;
+  position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:200;
   overflow-y:auto;display:none;padding:16px
 }
 #stats-panel h2{color:var(--gold);text-align:center;margin-bottom:12px;font-size:18px}
-#stats-panel .close{position:absolute;top:10px;right:16px;font-size:24px;color:var(--white);cursor:pointer}
-.stats-table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0}
-.stats-table th,.stats-table td{padding:5px 4px;border:1px solid rgba(255,255,255,0.1);text-align:center}
-.stats-table th{background:rgba(255,255,255,0.05);color:var(--gold)}
+#stats-panel .close{position:absolute;top:10px;right:16px;font-size:26px;color:var(--white);cursor:pointer}
+.stats-table{width:100%;border-collapse:collapse;font-size:11px;margin:8px 0}
+.stats-table th,.stats-table td{padding:6px 4px;border:1px solid rgba(255,255,255,0.1);text-align:center}
+.stats-table th{background:rgba(232,196,94,0.08);color:var(--gold)}
 .stats-table td{color:var(--text)}
-.stats-row{display:flex;justify-content:space-around;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;margin:6px 0;font-size:12px}
-.stats-item{text-align:center}.stats-item .val{font-size:20px;font-weight:900;color:var(--gold)}.stats-item .label{font-size:10px;color:var(--gray)}
+.stats-row{display:flex;justify-content:space-around;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;margin:6px 0;font-size:12px;border:1px solid rgba(255,255,255,0.05)}
+.stats-item{text-align:center}.stats-item .val{font-size:22px;font-weight:900;color:var(--gold)}.stats-item .label{font-size:10px;color:var(--gray)}
 
-/* 消息 */
+/* ========== 消息 ========== */
 #message{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;
-  background:rgba(0,0,0,0.8);color:var(--gold);padding:6px 16px;border-radius:12px;
-  font-size:12px;font-weight:700;pointer-events:none;transition:opacity 0.5s;text-align:center;max-width:90%}
+  background:rgba(0,0,0,0.85);color:var(--gold);padding:7px 18px;border-radius:14px;
+  font-size:13px;font-weight:700;pointer-events:none;transition:opacity 0.5s;text-align:center;max-width:90%;
+  border:1px solid rgba(232,196,94,0.2);box-shadow:0 2px 10px rgba(0,0,0,0.4)}
 
 /* 难度选择标签 */
 .diff-easy{color:#4caf50}.diff-medium{color:#ff9800}.diff-hard{color:#f44336}
 
-/* 响应式 */
+/* ========== 响应式 ========== */
 @media(max-width:380px){
-  .your-card{width:44px;height:64px;font-size:12px}.your-card .suit{font-size:17px}
-  .community-card{width:30px;height:44px;font-size:8px}
-  .player-seat .mini-card{width:20px;height:30px;font-size:6px}
-  #action-bar button{padding:12px 16px;font-size:13px;min-width:50px}
-  #your-hand{bottom:110px}
-  #topbar .title{font-size:10px}
-  #topbar .info{font-size:8px;max-width:80px}
-  #topbar button{font-size:8px;padding:2px 4px}
+  .your-card{width:50px;height:72px;font-size:14px}.your-card .suit{font-size:21px}
+  .community-card{width:36px;height:52px;font-size:10px}.community-card .suit{font-size:14px}
+  .player-seat .mini-card{width:24px;height:34px;font-size:7px}.player-seat .mini-card .suit{font-size:10px}
+  .player-seat .name{font-size:11px}
+  .player-seat .chips{font-size:10px}
+  #action-bar button{padding:12px 16px;font-size:13px;min-width:52px}
+  #your-hand{bottom:115px}
+  #topbar .title{font-size:13px}
+  #topbar .info{font-size:10px;max-width:80px}
+  #topbar button{font-size:11px;padding:6px 8px}
+  #phase-indicator{font-size:11px;gap:6px}
 }
 </style>
 </head>
@@ -205,22 +262,22 @@ body{
   <div id="topbar">
     <span class="title">🃏 德州扑克</span>
     <span id="table-info" class="info">盲注 5/10</span>
-    <button onclick="toggleStats()" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px">📊 统计</button>
-    <button onclick="toggleHistory()" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px">📜 历史</button>
-    <button onclick="resetGame()" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px">🔄 重开</button>
-    <button onclick="exitToSetup()" style="background:rgba(255,100,100,0.15);border:1px solid rgba(255,100,100,0.3);color:#f66;padding:4px 8px;border-radius:4px;font-size:10px">🚪 退出</button>
+    <button onclick="toggleStats()">📊 统计</button>
+    <button onclick="toggleHistory()">📜 历史</button>
+    <button onclick="resetGame()">🔄 重开</button>
+    <button onclick="exitToSetup()" style="background:rgba(180,60,60,0.2);border-color:rgba(180,60,60,0.3);color:#e88">🚪 退出</button>
   </div>
 
   <!-- 阶段指示器 -->
-  <div id="phase-indicator" style="display:flex;justify-content:center;align-items:center;padding:6px 10px;background:rgba(0,0,0,0.6);gap:16px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">
-    <span id="phase-preflop" style="color:var(--gold);font-weight:700">🔄 翻牌前</span>
-    <span style="color:rgba(255,255,255,0.15)">→</span>
+  <div id="phase-indicator">
+    <span id="phase-preflop" style="color:var(--gold);font-weight:800">🔄 翻牌前</span>
+    <span class="phase-arrow">›</span>
     <span id="phase-flop" style="color:rgba(255,255,255,0.25)">翻牌</span>
-    <span style="color:rgba(255,255,255,0.15)">→</span>
+    <span class="phase-arrow">›</span>
     <span id="phase-turn" style="color:rgba(255,255,255,0.25)">转牌</span>
-    <span style="color:rgba(255,255,255,0.15)">→</span>
+    <span class="phase-arrow">›</span>
     <span id="phase-river" style="color:rgba(255,255,255,0.25)">河牌</span>
-    <span style="color:#8b949e;margin-left:8px;font-size:10px">底池: <span id="phase-pot" style="color:var(--gold);font-weight:700">0</span></span>
+    <span class="phase-pot-wrap" style="font-size:11px;color:#8b949e">💰<span id="phase-pot" style="color:var(--gold);font-weight:800">0</span></span>
   </div>
 
   <div id="table">
@@ -234,13 +291,13 @@ body{
     <button class="btn-check" id="btn-check" onclick="playerAction('check')">过牌</button>
     <button class="btn-call" id="btn-call" onclick="playerAction('call')">跟注</button>
     <div style="display:flex;align-items:center;gap:4px;width:100%;margin:2px 0">
-      <button class="btn-raise" id="btn-r35" onclick="raiseByPot(0.33)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注⅓底池">⅓池</button>
-      <button class="btn-raise" id="btn-r50" onclick="raiseByPot(0.5)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注½底池">½池</button>
-      <button class="btn-raise" id="btn-r65" onclick="raiseByPot(0.67)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注⅔底池">⅔池</button>
-      <button class="btn-raise" id="btn-r100" onclick="raiseByPot(1.0)" style="font-size:11px;padding:10px 6px;min-width:36px" title="加注满池">满池</button>
+      <button class="btn-raise" id="btn-r35" onclick="raiseByPot(0.33)" style="font-size:12px;padding:10px 8px;min-width:40px;font-weight:800" title="加注⅓底池">⅓池</button>
+      <button class="btn-raise" id="btn-r50" onclick="raiseByPot(0.5)" style="font-size:12px;padding:10px 8px;min-width:40px;font-weight:800" title="加注½底池">½池</button>
+      <button class="btn-raise" id="btn-r65" onclick="raiseByPot(0.67)" style="font-size:12px;padding:10px 8px;min-width:40px;font-weight:800" title="加注⅔底池">⅔池</button>
+      <button class="btn-raise" id="btn-r100" onclick="raiseByPot(1.0)" style="font-size:12px;padding:10px 8px;min-width:40px;font-weight:800" title="加注满池">满池</button>
       <input type="range" id="raise-slider" min="0" max="100" value="50" oninput="updateRaiseAmount()" style="flex:1;min-width:40px">
-      <span id="raise-amount" style="font-size:13px;color:var(--gold);min-width:44px;text-align:center;font-weight:700">+50</span>
-      <button class="btn-raise" id="btn-raise" onclick="playerAction('raise')" style="font-size:13px;padding:10px 10px;min-width:44px">加注</button>
+      <span id="raise-amount" style="font-size:14px;color:var(--gold);min-width:48px;text-align:center;font-weight:800">+50</span>
+      <button class="btn-raise" id="btn-raise" onclick="playerAction('raise')" style="font-size:14px;padding:10px 12px;min-width:48px;font-weight:800">加注</button>
     </div>
     <button class="btn-allin" id="btn-allin" onclick="playerAction('allin')">All-in</button>
   </div>
@@ -3220,8 +3277,8 @@ function render(){
   }
   if(game.community.length>0){
     let lbl=document.createElement('div');
-    lbl.style.cssText='position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);margin-top:32px;font-size:9px;color:#8b949e;white-space:nowrap';
-    lbl.textContent=game.community.length<=3?'翻牌':game.community.length===4?'转牌':'河牌';
+    lbl.style.cssText='position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);margin-top:40px;font-size:10px;color:#9ab09a;white-space:nowrap;font-weight:600;letter-spacing:1px';
+    lbl.textContent=game.community.length<=3?'翻 牌':game.community.length===4?'转 牌':'河 牌';
     communityEl.appendChild(lbl);
   }
 
@@ -3257,7 +3314,7 @@ function render(){
       }
       seat.appendChild(cardsRow);
     }
-    seat.innerHTML+=`<div class="chips">💰 ${Math.max(0,p.chips)}</div>`;
+    seat.innerHTML+=`<div class="chips">🪙 ${Math.max(0,p.chips)}</div>`;
     if(p.bet>0)seat.innerHTML+=`<div class="bet">注 ${p.bet}</div>`;
     if(p.lastAction)seat.innerHTML+=`<div class="action-badge" style="background:rgba(0,0,0,0.5)">${actionLabel(p.lastAction)}</div>`;
 
@@ -3281,9 +3338,9 @@ function render(){
   // 底池+牌型提示
   let catStr='';
   if(hp.hole.length===2&&game.community.length>=3&&!hp.folded){
-    catStr=`<span style="font-size:10px;color:#8b949e;display:block">你的牌: <b style="color:var(--gold)">${getHandCategory(hp.hole,game.community)}</b></span>`;
+    catStr=`<span style="font-size:11px;color:#8b949e;display:block;margin-top:2px">你的牌: <b style="color:var(--gold)">${getHandCategory(hp.hole,game.community)}</b></span>`;
   }
-  document.getElementById('pot-display').innerHTML=`<div style="background:rgba(0,0,0,0.5);color:var(--gold);padding:4px 12px;border-radius:10px;font-size:13px;font-weight:700">底池: ${game.pot}</div>${catStr}`;
+  document.getElementById('pot-display').innerHTML=`<div style="background:linear-gradient(135deg,rgba(0,0,0,0.7),rgba(20,30,20,0.7));color:var(--gold);padding:6px 16px;border-radius:14px;font-size:16px;font-weight:800;border:1px solid rgba(232,196,94,0.25);box-shadow:0 2px 10px rgba(0,0,0,0.3)">💰 底池 ${game.pot}</div>${catStr}`;
 
   document.getElementById('table-info').textContent=
     `${game.phase==='preflop'?'翻牌前':game.phase==='flop'?'翻牌':game.phase==='turn'?'转牌':'河牌'} | ${SMALL_BLIND}/${BIG_BLIND} | #${game.handCount||0}`;
@@ -3296,11 +3353,12 @@ function render(){
     var el = document.getElementById('phase-' + ph);
     if (el) {
       if (i < currentIdx) {
-        el.style.color = 'rgba(255,255,255,0.35)';
+        el.style.color = 'rgba(255,255,255,0.3)';
         el.style.fontWeight = '400';
+        el.textContent = phaseNames[i];
       } else if (i === currentIdx) {
         el.style.color = 'var(--gold)';
-        el.style.fontWeight = '700';
+        el.style.fontWeight = '800';
         el.textContent = (i === 0 ? '🔄 ' : '▸ ') + phaseNames[i];
       } else {
         el.style.color = 'rgba(255,255,255,0.25)';
