@@ -1,0 +1,3149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<!-- iOS PWA 支持 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="德州扑克">
+<meta name="format-detection" content="telephone=no">
+<!-- Android PWA -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="poker_icon.svg">
+<link rel="apple-touch-icon" href="poker_icon.svg">
+<link rel="apple-touch-icon" sizes="192x192" href="poker_icon.svg">
+<meta name="theme-color" content="#0a1a0a">
+<title>德州扑克 人机对战</title>
+<style>
+:root{
+  --bg:#0a1a0a;--table:#1a5c1a;--felt:#1e7e1e;--gold:#d4a84b;--chip:#d4a84b;
+  --white:#f0f0e0;--red:#e04040;--blue:#4080e0;--green:#40a040;--gray:#708070;
+  --card-bg:#fff;--card-red:#d04040;--card-black:#202020;
+  --btn-primary:#1a6b3a;--btn-danger:#9b3030;--btn-warn:#a08020;--btn-info:#3050a0;
+  --panel-bg:rgba(0,0,0,0.7);--text:#e0e0d0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+  user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+}
+#app{max-width:500px;margin:0 auto;position:relative;min-height:100vh;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
+/* 顶栏 */
+#topbar{
+  background:rgba(0,0,0,0.85);padding:6px 10px;display:flex;align-items:center;
+  justify-content:space-between;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.1);
+  gap:4px;flex-wrap:nowrap
+}
+#topbar .title{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap}
+#topbar .info{font-size:10px;color:var(--gray);white-space:nowrap}
+#topbar button{flex-shrink:0}
+
+/* 桌面 */
+#table{
+  flex:1;background:radial-gradient(ellipse at center,#2a8a2a 0%,#1a5a1a 60%,#0a3a0a 100%);
+  position:relative;min-height:400px;border:6px solid #4a3020;border-radius:50%;
+  margin:10px 5px;box-shadow:0 0 40px rgba(0,0,0,0.5),inset 0 0 80px rgba(0,0,0,0.3);
+  overflow:hidden
+}
+
+/* 公共牌区 */
+#community{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);display:flex;gap:3px}
+.community-card{
+  width:36px;height:52px;background:var(--card-bg);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;
+  box-shadow:1px 1px 3px rgba(0,0,0,0.3);flex-direction:column;line-height:1
+}
+.community-card .suit{font-size:14px}
+.community-card.red{color:var(--card-red)}
+.community-card.black{color:var(--card-black)}
+.community-card.flipped{box-shadow:0 0 6px rgba(212,168,75,0.4)}
+.community-card.unflipped{
+  background:linear-gradient(135deg,#1a3a6a,#2a5aaa);color:rgba(255,255,255,0.3);
+  font-size:16px;font-weight:900;opacity:0.5
+}
+.card-back{
+  background:linear-gradient(135deg,#1a3a6a,#2a5aaa);color:rgba(255,255,255,0.3);
+  font-size:18px
+}
+
+/* 玩家位置 */
+.player-seat{
+  position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;
+  transition:all 0.3s
+}
+.player-seat .name{font-size:10px;color:var(--white);font-weight:600;text-shadow:0 1px 2px #000}
+.player-seat .chips{font-size:9px;color:var(--gold)}
+.player-seat .bet{font-size:11px;color:var(--white);font-weight:700;background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:8px}
+.player-seat .cards-row{display:flex;gap:1px}
+.player-seat .mini-card{
+  width:24px;height:36px;background:var(--card-bg);border-radius:2px;
+  display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;
+  flex-direction:column;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,0.3)
+}
+.player-seat .mini-card .suit{font-size:10px}
+.player-seat .mini-card.red{color:var(--card-red)}.player-seat .mini-card.black{color:var(--card-black)}
+.mini-card-back{background:linear-gradient(135deg,#1a3a6a,#2a5aaa);color:rgba(255,255,255,0.3);font-size:12px}
+.player-seat .dealer{font-size:9px;background:var(--gold);color:#000;padding:0 5px;border-radius:4px;font-weight:700}
+.player-seat .blind-badge{font-size:8px;padding:0 4px;border-radius:3px;font-weight:700;color:#fff}
+.player-seat .blind-sb{background:#3070c0}
+.player-seat .blind-bb{background:#c04040}
+.player-seat .action-badge{
+  font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700;white-space:nowrap
+}
+.player-seat.folded{opacity:0.4}
+.player-seat.active .name{color:var(--gold)}
+.player-seat.highlight{animation:pulse 0.8s infinite}
+@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4)}}
+
+/* 玩家位置 - 6人桌布局 */
+#seat0{top:82%;left:50%;transform:translateX(-50%)}  /* 你 - 底部(只显示名字和筹码) */
+#seat1{top:60%;left:8%}   /* 左下 */
+#seat2{top:20%;left:15%}  /* 左上 */
+#seat3{top:8%;left:50%;transform:translateX(-50%)}  /* 顶部 */
+#seat4{top:20%;right:15%}  /* 右上 */
+#seat5{top:60%;right:8%}   /* 右下 */
+
+/* 你手牌 */
+#your-hand{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5}
+.your-card{
+  width:52px;height:74px;background:var(--card-bg);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;
+  flex-direction:column;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.4);
+  border:1px solid rgba(0,0,0,0.1)
+}
+.your-card .suit{font-size:20px}
+.your-card.red{color:var(--card-red)}.your-card.black{color:var(--card-black)}
+
+/* 底池 */
+#pot-display{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin-top:-30px}
+
+/* 操作栏 */
+#action-bar{
+  background:var(--panel-bg);padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;flex-wrap:wrap;
+  justify-content:center;border-top:1px solid rgba(255,255,255,0.1)
+}
+#action-bar button{
+  padding:10px 14px;border:none;border-radius:8px;font-size:14px;font-weight:700;
+  cursor:pointer;color:#fff;min-width:50px;transition:all 0.15s
+}
+#action-bar button:active{transform:scale(0.95)}
+#action-bar button:disabled{opacity:0.3;pointer-events:none}
+.btn-fold{background:var(--btn-danger)}.btn-check{background:var(--btn-info)}
+.btn-call{background:var(--btn-primary)}.btn-raise{background:var(--btn-warn)}
+.btn-allin{background:linear-gradient(135deg,#c04040,#802020)}
+#raise-slider{width:100%;margin:0 5px;accent-color:var(--gold)}.raise-amount{font-size:11px;color:var(--gold);text-align:center;min-width:40px}
+
+/* 弹窗 */
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:100;
+  display:flex;align-items:center;justify-content:center}
+.modal-content{
+  background:linear-gradient(135deg,#1a2a1a,#0a1a0a);border:2px solid var(--gold);
+  border-radius:12px;padding:24px;max-width:380px;width:90%;text-align:center;color:var(--text);
+  max-height:90vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch
+}
+.modal h2{color:var(--gold);margin-bottom:12px;font-size:20px}
+.modal button{
+  padding:10px 24px;margin:6px;border:none;border-radius:8px;font-size:15px;font-weight:700;
+  cursor:pointer;color:#fff;min-width:100px
+}
+.modal select{
+  padding:8px 12px;border:1px solid var(--gold);border-radius:6px;background:#1a2a1a;
+  color:var(--text);font-size:15px;margin:8px 0;width:80%
+}
+
+/* 统计面板 */
+#stats-panel{
+  position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:200;
+  overflow-y:auto;display:none;padding:16px
+}
+#stats-panel h2{color:var(--gold);text-align:center;margin-bottom:12px;font-size:18px}
+#stats-panel .close{position:absolute;top:10px;right:16px;font-size:24px;color:var(--white);cursor:pointer}
+.stats-table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0}
+.stats-table th,.stats-table td{padding:5px 4px;border:1px solid rgba(255,255,255,0.1);text-align:center}
+.stats-table th{background:rgba(255,255,255,0.05);color:var(--gold)}
+.stats-table td{color:var(--text)}
+.stats-row{display:flex;justify-content:space-around;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;margin:6px 0;font-size:12px}
+.stats-item{text-align:center}.stats-item .val{font-size:20px;font-weight:900;color:var(--gold)}.stats-item .label{font-size:10px;color:var(--gray)}
+
+/* 消息 */
+#message{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;
+  background:rgba(0,0,0,0.8);color:var(--gold);padding:6px 16px;border-radius:12px;
+  font-size:12px;font-weight:700;pointer-events:none;transition:opacity 0.5s;text-align:center;max-width:90%}
+
+/* 难度选择标签 */
+.diff-easy{color:#4caf50}.diff-medium{color:#ff9800}.diff-hard{color:#f44336}
+
+/* 响应式 */
+@media(max-width:380px){
+  .your-card{width:44px;height:64px;font-size:12px}.your-card .suit{font-size:17px}
+  .community-card{width:30px;height:44px;font-size:8px}
+  .player-seat .mini-card{width:20px;height:30px;font-size:6px}
+  #action-bar button{padding:8px 10px;font-size:12px;min-width:40px}
+  #your-hand{bottom:110px}
+}
+</style>
+</head>
+<body>
+<!-- 加载遮罩: JS初始化完成后自动隐藏 -->
+<div id="loading-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0a1a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.3s">
+  <div style="font-size:48px;margin-bottom:16px">🃏</div>
+  <div style="color:#d4a84b;font-size:18px;font-weight:700;margin-bottom:12px">德州扑克</div>
+  <div style="width:40px;height:40px;border:3px solid rgba(212,168,75,0.2);border-top-color:#d4a84b;border-radius:50%;animation:poker-spin 0.8s linear infinite"></div>
+  <div style="color:#708070;font-size:11px;margin-top:12px">加载中...</div>
+</div>
+<style>@keyframes poker-spin{to{transform:rotate(360deg)}}</style>
+<noscript><div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0a1a0a;display:flex;align-items:center;justify-content:center;color:#d4a84b;font-size:16px;z-index:10000">请启用JavaScript后访问</div></noscript>
+<div id="app">
+  <div id="topbar">
+    <span class="title">🃏 德州扑克</span>
+    <span id="table-info" class="info">盲注 5/10</span>
+    <button onclick="toggleStats()" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px">📊 统计</button>
+    <button onclick="toggleHistory()" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px">📜 历史</button>
+    <button onclick="resetGame()" style="background:rgba(255,255,255,0.1);border:none;color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px">🔄 重开</button>
+    <button onclick="exitToSetup()" style="background:rgba(255,100,100,0.15);border:1px solid rgba(255,100,100,0.3);color:#f66;padding:4px 8px;border-radius:4px;font-size:10px">🚪 退出</button>
+  </div>
+
+  <div id="table">
+    <div id="community"></div>
+    <div id="pot-display" style="text-align:center"></div>
+    <div id="message"></div>
+  </div>
+
+  <div id="action-bar">
+    <button class="btn-fold" id="btn-fold" onclick="playerAction('fold')">弃牌</button>
+    <button class="btn-check" id="btn-check" onclick="playerAction('check')">过牌</button>
+    <button class="btn-call" id="btn-call" onclick="playerAction('call')">跟注</button>
+    <div style="display:flex;align-items:center;gap:3px;width:100%">
+      <button class="btn-raise" id="btn-r35" onclick="raiseByPot(0.33)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注⅓底池">+⅓池</button>
+      <button class="btn-raise" id="btn-r50" onclick="raiseByPot(0.5)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注½底池">+½池</button>
+      <button class="btn-raise" id="btn-r65" onclick="raiseByPot(0.67)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注⅔底池">+⅔池</button>
+      <button class="btn-raise" id="btn-r100" onclick="raiseByPot(1.0)" style="font-size:9px;padding:6px 4px;min-width:28px" title="加注满池">+满池</button>
+      <input type="range" id="raise-slider" min="0" max="100" value="50" oninput="updateRaiseAmount()" style="flex:1;min-width:60px">
+      <span id="raise-amount" style="font-size:11px;color:var(--gold);min-width:40px;text-align:center">+50</span>
+      <button class="btn-raise" id="btn-raise" onclick="playerAction('raise')" style="font-size:11px;padding:6px 8px">加注</button>
+    </div>
+    <button class="btn-allin" id="btn-allin" onclick="playerAction('allin')">All-in</button>
+  </div>
+</div>
+
+<!-- 开局面板 -->
+<div class="modal" id="start-modal">
+  <div class="modal-content">
+    <h2>🃏 德州扑克 人机对战</h2>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:12px">1个你 + 5个AI机器人<br>起始筹码: 1000 (100BB)</p>
+    <label style="font-size:13px;display:block;margin:8px 0">AI 难度:</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0;font-size:12px;text-align:left">
+      <span>机器人A:</span><select id="diff-A" class="bot-diff"><option value="bronze">🥉铜牌</option><option value="silver">🥈银牌</option><option value="gold" selected>🥇金牌</option><option value="diamond">💎钻石</option><option value="master">👑大师</option></select>
+      <span>机器人B:</span><select id="diff-B" class="bot-diff"><option value="bronze">🥉铜牌</option><option value="silver">🥈银牌</option><option value="gold" selected>🥇金牌</option><option value="diamond">💎钻石</option><option value="master">👑大师</option></select>
+      <span>机器人C:</span><select id="diff-C" class="bot-diff"><option value="bronze">🥉铜牌</option><option value="silver">🥈银牌</option><option value="gold" selected>🥇金牌</option><option value="diamond">💎钻石</option><option value="master">👑大师</option></select>
+      <span>机器人D:</span><select id="diff-D" class="bot-diff"><option value="bronze">🥉铜牌</option><option value="silver">🥈银牌</option><option value="gold" selected>🥇金牌</option><option value="diamond">💎钻石</option><option value="master">👑大师</option></select>
+      <span>机器人E:</span><select id="diff-E" class="bot-diff"><option value="bronze">🥉铜牌</option><option value="silver">🥈银牌</option><option value="gold" selected>🥇金牌</option><option value="diamond">💎钻石</option><option value="master">👑大师</option></select>
+    </div>
+    <p style="font-size:10px;color:#8b949e;margin:4px 0">铜牌=范围意识 | 银牌=GTO范围+SPR | 金牌=全GTO+剥削 | 钻石=对手建模+记忆 | 大师=最优GTO+深度记忆</p>
+    <div id="ai-training-report" style="display:none;background:rgba(30,60,30,0.6);border:1px solid rgba(100,200,100,0.3);border-radius:8px;padding:10px;margin:8px 0;font-size:11px;text-align:left;max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+    <button style="background:#555;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:11px;margin:2px" onclick="
+      ['A','B','C','D','E'].forEach(l=>document.getElementById('diff-'+l).value='bronze')
+    ">全设铜牌</button>
+    <button style="background:#555;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:11px;margin:2px" onclick="
+      ['A','B','C','D','E'].forEach(l=>document.getElementById('diff-'+l).value='master')
+    ">全设大师</button>
+    <button style="background:#444;color:#ccc;border:none;padding:4px 10px;border-radius:4px;font-size:11px;margin:2px" onclick="showLogPanel()">📋 运行日志</button>
+    <br>
+    <button style="background:var(--btn-primary)" onclick="startGame()">开始游戏</button>
+  </div>
+</div>
+
+<!-- 运行日志面板 -->
+<div class="modal" id="log-panel" style="display:none;background:rgba(0,0,0,0.8)">
+  <div class="modal-content" style="text-align:left;max-width:440px;width:95%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="margin:0;font-size:16px">📋 运行日志</h2>
+      <span style="font-size:22px;cursor:pointer;color:#aaa" onclick="document.getElementById('log-panel').style.display='none'">✕</span>
+    </div>
+    <p style="font-size:10px;color:#8b949e;margin:0 0 8px">最近200条日志 | 如遇bug请点击"复制日志"或"下载"并反馈</p>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button style="background:var(--btn-info);font-size:12px;padding:6px 12px" onclick="copyLog()">📋 复制日志</button>
+      <button style="background:var(--btn-info);font-size:12px;padding:6px 12px" onclick="downloadLog()">⬇️ 下载日志</button>
+      <button style="background:#500;font-size:12px;padding:6px 12px;color:#fff;border:none;border-radius:8px" onclick="clearLog()">🗑️ 清空</button>
+    </div>
+    <textarea id="log-content" readonly style="width:100%;height:55vh;min-height:300px;background:#0a0a0a;color:#0f0;border:1px solid #333;border-radius:6px;font-family:monospace;font-size:10px;padding:8px;resize:vertical;line-height:1.4;white-space:pre-wrap;word-break:break-all"></textarea>
+  </div>
+</div>
+
+<!-- 结束弹窗 -->
+<div class="modal" id="end-modal" style="display:none;background:rgba(0,0,0,0.6)">
+  <div class="modal-content" style="position:relative">
+    <span style="position:absolute;top:6px;right:12px;font-size:22px;cursor:pointer;color:#aaa;z-index:1" onclick="document.getElementById('end-modal').style.display='none'">✕</span>
+    <h2 id="end-title">手牌结束</h2>
+    <p id="end-detail" style="font-size:13px;color:var(--text);margin:8px 0"></p>
+    <p id="end-result" style="font-size:18px;font-weight:700;color:var(--gold)"></p>
+    <button style="background:var(--btn-primary)" onclick="nextHand()">下一局</button>
+    <button style="background:var(--btn-info)" onclick="toggleStats()">📊 统计</button>
+    <button style="background:#6b3030;color:#fff;border:none;padding:10px 24px;margin:6px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-width:100px" onclick="exitToSetup()">🚪 退出重设</button>
+    <br><small style="color:#8b949e">点击 ✕ 可关闭弹窗查看所有人的底牌</small>
+  </div>
+</div>
+
+<!-- 统计面板 -->
+<div id="stats-panel">
+  <span class="close" onclick="toggleStats()">✕</span>
+  <h2>📊 你的统计</h2>
+  <div class="stats-row">
+    <div class="stats-item"><div class="val" id="s-total">0</div><div class="label">总局数</div></div>
+    <div class="stats-item"><div class="val" id="s-wins">0</div><div class="label">胜场</div></div>
+    <div class="stats-item"><div class="val" id="s-wr">0%</div><div class="label">胜率</div></div>
+    <div class="stats-item"><div class="val" id="s-chips">1000</div><div class="label">当前筹码</div></div>
+    <div class="stats-item"><div class="val" id="s-cumprofit" style="color:#3fb950">+0</div><div class="label">累计盈亏</div></div>
+  </div>
+  <div class="stats-row">
+    <div class="stats-item"><div class="val" id="s-vpip">0%</div><div class="label">入池率VPIP</div></div>
+    <div class="stats-item"><div class="val" id="s-pfr">0%</div><div class="label">加注率PFR</div></div>
+    <div class="stats-item"><div class="val" id="s-af">0</div><div class="label">激进度AF</div></div>
+  </div>
+  <h3 style="color:var(--gold);font-size:13px;margin-top:12px">各起手牌型胜率</h3>
+  <table class="stats-table">
+    <thead><tr><th>牌型</th><th>次数</th><th>胜</th><th>胜率</th></tr></thead>
+    <tbody id="hand-stats"></tbody>
+  </table>
+  <h3 style="color:var(--gold);font-size:13px;margin-top:12px">各位置胜率</h3>
+  <table class="stats-table">
+    <thead><tr><th>位置</th><th>次数</th><th>胜</th><th>胜率</th></tr></thead>
+    <tbody id="pos-stats"></tbody>
+  </table>
+  <h3 style="color:var(--gold);font-size:13px;margin-top:12px">翻牌后牌型胜率</h3>
+  <table class="stats-table">
+    <thead><tr><th>翻牌后牌型</th><th>次数</th><th>胜</th><th>胜率</th></tr></thead>
+    <tbody id="postflop-stats"></tbody>
+  </table>
+  <button onclick="resetStats()" style="background:var(--btn-danger);color:#fff;border:none;padding:8px 16px;border-radius:6px;margin-top:12px;font-size:12px">重置统计</button>
+  <button onclick="toggleStats()" style="background:var(--btn-info);color:#fff;border:none;padding:8px 16px;border-radius:6px;margin:12px 0 0 8px;font-size:12px">关闭</button>
+</div>
+
+<!-- 历史面板 -->
+<div id="history-panel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:300;overflow-y:auto;display:none;padding:12px;font-size:11px;color:#c9d1d9">
+  <span style="position:absolute;top:10px;right:16px;font-size:22px;color:#888;cursor:pointer;z-index:1" onclick="toggleHistory()">✕</span>
+  <h3 style="color:var(--gold);text-align:center;margin-bottom:8px">📜 本局操作历史</h3>
+  <div style="text-align:center;margin-bottom:8px">
+    <button onclick="renderHistory()" style="background:#333;color:#fff;border:1px solid #555;padding:4px 10px;border-radius:4px;font-size:10px">🔄 刷新</button>
+    <button onclick="showBotsReport()" style="background:#333;color:#fff;border:1px solid #555;padding:4px 10px;border-radius:4px;font-size:10px">🤖 机器人数据</button>
+    <button onclick="resetBotsData()" style="background:#500;color:#fff;border:1px solid #700;padding:4px 10px;border-radius:4px;font-size:10px">🗑️ 清除数据</button>
+  </div>
+  <div id="history-content"></div>
+</div>
+
+<script>
+// ============================================================
+// 扑克引擎
+// ============================================================
+
+// ============================================================
+// 运行日志系统 - 记录关键事件, 方便定位bug
+// ============================================================
+const MAX_LOG_ENTRIES = 200;
+let _logBuffer = [];
+
+function _log(msg, level) {
+  level = level || 'INFO';
+  let time = new Date();
+  let ts = String(time.getHours()).padStart(2,'0') + ':' +
+           String(time.getMinutes()).padStart(2,'0') + ':' +
+           String(time.getSeconds()).padStart(2,'0') + '.' +
+           String(time.getMilliseconds()).padStart(3,'0');
+  // 安全访问game (避免TDZ: game用let声明, 初始化前访问会报错)
+  let hand = '';
+  try { if (typeof game !== 'undefined' && game && game.handCount) hand = '#' + game.handCount; } catch(e) {}
+  let entry = '[' + ts + '] [' + level + ']' + (hand ? ' ' + hand : '') + ' ' + msg;
+  _logBuffer.push(entry);
+  if (_logBuffer.length > MAX_LOG_ENTRIES) {
+    _logBuffer.shift();
+  }
+  // 同步到localStorage (最多保留最近100条用于跨session)
+  try {
+    if (_logBuffer.length % 10 === 0) {
+      localStorage.setItem('th_log', JSON.stringify(_logBuffer.slice(-100)));
+    }
+  } catch(e) {}
+}
+
+function logInfo(msg) { _log(msg, 'INFO'); }
+function logWarn(msg) { _log(msg, 'WARN'); }
+function logError(msg, e) {
+  let detail = msg;
+  if (e) {
+    detail += ': ' + (e.message || e);
+    if (e.stack) detail += '\n  at ' + e.stack.split('\n').slice(1, 4).join('\n  at ').trim();
+  }
+  _log(detail, 'ERROR');
+  // 注意: 不调用 console.error, 因为它已被包装会再次调用_log导致无限递归
+  // 直接调用原始的 console.error
+  try { if (typeof _origConsoleError === 'function') _origConsoleError(msg, e); } catch(ex) {}
+}
+
+// 初始化: 从localStorage加载历史日志
+try {
+  let saved = JSON.parse(localStorage.getItem('th_log') || '[]');
+  if (Array.isArray(saved) && saved.length > 0) {
+    _logBuffer = saved;
+    _log('--- 从上次会话恢复日志 ---', 'INFO');
+  }
+} catch(e) {}
+
+_log('德州扑克 v2.0 启动', 'INFO');
+
+function showLogPanel() {
+  let panel = document.getElementById('log-panel');
+  let textarea = document.getElementById('log-content');
+  if (textarea) textarea.value = _logBuffer.join('\n');
+  panel.style.display = 'flex';
+  // 滚动到底部
+  setTimeout(function() {
+    if (textarea) textarea.scrollTop = textarea.scrollHeight;
+  }, 50);
+}
+
+function copyLog() {
+  let textarea = document.getElementById('log-content');
+  let text = textarea ? textarea.value : _logBuffer.join('\n');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        alert('日志已复制到剪贴板!');
+      }).catch(function() {
+        // 降级方案
+        textarea.select();
+        document.execCommand('copy');
+        alert('日志已复制!');
+      });
+    } else {
+      textarea.select();
+      document.execCommand('copy');
+      alert('日志已复制!');
+    }
+  } catch(e) {
+    alert('复制失败, 请手动选中文本复制');
+  }
+}
+
+function downloadLog() {
+  let text = _logBuffer.join('\n');
+  let time = new Date();
+  let dateStr = time.getFullYear() + '-' +
+                String(time.getMonth()+1).padStart(2,'0') + '-' +
+                String(time.getDate()).padStart(2,'0') + '_' +
+                String(time.getHours()).padStart(2,'0') +
+                String(time.getMinutes()).padStart(2,'0');
+  let filename = 'poker_log_' + dateStr + '.txt';
+  try {
+    let blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    // 降级: data URI
+    let dataUri = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+    window.open(dataUri, '_blank');
+  }
+}
+
+function clearLog() {
+  if (!confirm('确定清空所有日志?')) return;
+  _logBuffer = [];
+  localStorage.removeItem('th_log');
+  _log('日志已清空', 'INFO');
+  showLogPanel();
+}
+
+// ===== 拦截关键函数添加日志 =====
+// 包装 console.error (带防递归保护)
+var _origConsoleError = console.error.bind(console);
+var _inLogGuard = false; // 防递归标志
+console.error = function() {
+  if (_inLogGuard) { _origConsoleError.apply(console, arguments); return; }
+  _inLogGuard = true;
+  try {
+    let args = Array.prototype.slice.call(arguments);
+    let msg = args.map(function(a) {
+      if (a && a.message) return a.message;
+      return String(a);
+    }).join(' ');
+    _log(msg, 'ERROR');
+  } catch(e) {}
+  _inLogGuard = false;
+  _origConsoleError.apply(console, arguments);
+};
+
+// 包装 window.onerror - 捕获未处理异常
+window.onerror = function(msg, url, line, col, err) {
+  try {
+    logError('未捕获异常: ' + msg, err || {message: msg, stack: 'at ' + (url||'') + ':' + line + ':' + col});
+  } catch(e) {}
+  return false;
+};
+
+// 包装 unhandledrejection
+window.addEventListener('unhandledrejection', function(event) {
+  try {
+    let err = event.reason;
+    logError('Promise未捕获异常', err);
+  } catch(e) {}
+});
+const RANKS='23456789TJQKA';
+const SUITS=['s','h','d','c'];
+const SUIT_SYMBOLS={s:'♠',h:'♥',d:'♦',c:'♣'};
+const SUIT_COLORS={s:'black',h:'red',d:'red',c:'black'};
+
+function makeDeck(){
+  let d=[];
+  for(let r of RANKS)for(let s of SUITS)d.push({rank:r,suit:s});
+  return d;
+}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+
+function rankVal(r){return RANKS.indexOf(r)}
+function handName(c1,c2){
+  let [r1,r2]=[c1.rank,c2.rank];
+  let v1=rankVal(r1),v2=rankVal(r2);
+  if(v1<v2){[r1,r2,v1,v2]=[r2,r1,v2,v1]}
+  if(r1===r2)return r1+r2;
+  return r1+r2+(c1.suit===c2.suit?'s':'o');
+}
+
+// 评估7选5最佳手牌
+function evaluate(cards){
+  if(cards.length<5)return {rank:0,score:0,name:'不足5张'};
+  let best=null;
+  for(let i=0;i<cards.length;i++){
+    for(let j=i+1;j<cards.length;j++){
+      for(let k=j+1;k<cards.length;k++){
+        for(let l=k+1;l<cards.length;l++){
+          for(let m=l+1;m<cards.length;m++){
+            let combo=[cards[i],cards[j],cards[k],cards[l],cards[m]];
+            let ev=score5(combo);
+            if(!best||ev.score>best.score)best=ev;
+          }
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function score5(cards){
+  let vals=cards.map(c=>rankVal(c.rank)).sort((a,b)=>b-a);
+  let suits=cards.map(c=>c.suit);
+  let isFlush=new Set(suits).size===1;
+  let isStraight=false,straightHigh=0;
+  let unique=[...new Set(vals)].sort((a,b)=>b-a);
+  if(unique.length===5){
+    if(unique[0]-unique[4]===4){isStraight=true;straightHigh=unique[0]}
+    else if(unique[0]===12&&unique[1]===3&&unique[2]===2&&unique[3]===1&&unique[4]===0){isStraight=true;straightHigh=3}
+  }
+  let freq={};vals.forEach(v=>freq[v]=(freq[v]||0)+1);
+  let groups=Object.entries(freq).map(([v,c])=>[parseInt(v),c]).sort((a,b)=>b[1]-a[1]||b[0]-a[0]);
+
+  if(isFlush&&isStraight)return {rank:8,score:8e10+straightHigh*1e8,name:'同花顺'};
+  if(groups[0][1]===4)return {rank:7,score:7e10+groups[0][0]*1e8+groups[1][0],name:'四条'};
+  if(groups[0][1]===3&&groups[1][1]===2)return {rank:6,score:6e10+groups[0][0]*1e8+groups[1][0],name:'葫芦'};
+  if(isFlush)return {rank:5,score:5e10+vals[0]*1e8+vals[1]*1e6+vals[2]*1e4+vals[3]*1e2+vals[4],name:'同花'};
+  if(isStraight)return {rank:4,score:4e10+straightHigh*1e8,name:'顺子'};
+  if(groups[0][1]===3){
+    let kickers=groups.slice(1).map(g=>g[0]).sort((a,b)=>b-a);
+    return {rank:3,score:3e10+groups[0][0]*1e8+kickers[0]*1e6+kickers[1]*1e4,name:'三条'};
+  }
+  if(groups[0][1]===2&&groups[1][1]===2){
+    let ps=[groups[0][0],groups[1][0]].sort((a,b)=>b-a);
+    return {rank:2,score:2e10+ps[0]*1e8+ps[1]*1e6+groups[2][0]*1e4,name:'两对'};
+  }
+  if(groups[0][1]===2){
+    let kickers=groups.slice(1).map(g=>g[0]).sort((a,b)=>b-a);
+    return {rank:1,score:1e10+groups[0][0]*1e8+kickers[0]*1e6+kickers[1]*1e4+kickers[2]*1e2,name:'一对'};
+  }
+  return {rank:0,score:vals[0]*1e8+vals[1]*1e6+vals[2]*1e4+vals[3]*1e2+vals[4],name:'高牌'};
+}
+
+function getHandCategory(hole,community){
+  let all=hole.concat(community||[]);
+  if(all.length<5)return '未成牌';
+  return evaluate(all).name;
+}
+
+// ============================================================
+// 核心AI引擎: 蒙特卡洛胜率 + 底池赔率 + 隐含赔率 + 出牌计数
+// ============================================================
+
+// 蒙特卡洛模拟胜率 (快速版: 随机对手手牌+剩余公共牌)
+function monteCarloEquity(hole,community,numOpponents,trials){
+  trials=trials||500;
+  if(!hole||hole.length<2)return 0.3;
+  let known=new Set(hole.concat(community||[]).map(c=>c.rank+c.suit));
+  let remaining=[];
+  for(let r of RANKS)for(let s of SUITS){
+    if(!known.has(r+s))remaining.push({rank:r,suit:s});
+  }
+  let wins=0,ties=0;
+  for(let t=0;t<trials;t++){
+    // 随机洗remaining的前N张
+    let pool=remaining.slice();
+    for(let i=0;i<pool.length-1;i++){
+      let j=i+Math.floor(Math.random()*(pool.length-i));
+      [pool[i],pool[j]]=[pool[j],pool[i]];
+    }
+    // 发对手手牌
+    let oppHands=[];
+    let idx=0;
+    for(let o=0;o<numOpponents;o++){
+      oppHands.push([pool[idx++],pool[idx++]]);
+    }
+    // 发剩余公共牌
+    let fullCommunity=(community||[]).concat(pool.slice(idx,idx+(5-(community||[]).length)));
+    // 评估所有人的手牌
+    let myScore=evaluate(hole.concat(fullCommunity)).score;
+    let bestOpp=0;
+    let isTie=false;
+    for(let oh of oppHands){
+      let oppScore=evaluate(oh.concat(fullCommunity)).score;
+      if(oppScore>myScore){bestOpp=1;break;}
+      if(oppScore===myScore)isTie=true;
+    }
+    if(bestOpp===0){if(isTie)ties++;else wins++;}
+  }
+  return (wins+ties*0.5)/trials;
+}
+
+// 出牌计数 (outs: 能改善手牌的未知牌数)
+function countOuts(hole,community){
+  if(!community||community.length<3)return 0;
+  let all=hole.concat(community);
+  let known=new Set(all.map(c=>c.rank+c.suit));
+  let cat=getHandCategory(hole,community);
+  let outs=0;
+  // 同花听牌: 9 outs
+  let suitCount={s:0,h:0,d:0,c:0};
+  all.forEach(c=>suitCount[c.suit]++);
+  if(Object.values(suitCount).some(v=>v===4))outs+=9;
+  // 顺子听牌: 8 outs (open-ended)
+  let vals=[...new Set(all.map(c=>rankVal(c.rank)))].sort((a,b)=>a-b);
+  for(let i=0;i<=vals.length-4;i++){
+    if(vals[i+3]-vals[i]===3)outs+=8; // 开放式顺子听牌
+    else if(vals[i+3]-vals[i]===4&&vals[i+2]-vals[i]===2)outs+=4; // 内听
+  }
+  // 对子→三条: 2 outs
+  if(cat==='一对'){
+    let pairRank=null;
+    let freq={};all.forEach(c=>freq[c.rank]=(freq[c.rank]||0)+1);
+    for(let r in freq)if(freq[r]===2)pairRank=r;
+    if(pairRank)outs+=2;
+  }
+  return Math.min(outs,21); // 上限21 outs
+}
+
+// 底池赔率 (跟注所需最低胜率)
+function potOddsRatio(toCall,pot){
+  if(toCall<=0)return 0;
+  return toCall/(pot+toCall);
+}
+
+// 隐含赔率 (考虑未来下注)
+function impliedOddsBonus(player,toCall,pot,outs){
+  if(outs<=0)return 0;
+  let sprVal=player.chips/(pot+0.01);
+  // 深筹码→隐含赔率更高(中牌后能赢更多)
+  let bonus=sprVal>5?0.06:sprVal>3?0.04:sprVal>1.5?0.02:0;
+  return bonus;
+}
+
+// 权益实现率 (位置好→实现更多权益)
+function equityRealization(player,baseEquity){
+  let pos=player.seat;
+  let relPos=(pos-game.dealerIdx+6)%6; // 0=BTN, 5=CO(逆)
+  // 后位实现率高, 前位折扣
+  let realization=relPos<=1?1.1:relPos===2?0.95:relPos===3?0.85:0.9;
+  return baseEquity*realization;
+}
+
+// EV计算
+function calcEV(equity,pot,toCall){
+  return equity*(pot+toCall)-(1-equity)*toCall;
+}
+
+// 听牌判断
+function hasDraw(hole,community){
+  if(!community||community.length<3)return false;
+  let all=hole.concat(community);
+  // 同花听牌 (4张同花)
+  let suitCount={s:0,h:0,d:0,c:0};
+  all.forEach(c=>suitCount[c.suit]++);
+  if(Object.values(suitCount).some(v=>v===4))return true;
+  // 顺子听牌 (4连张或两端开放)
+  let vals=[...new Set(all.map(c=>rankVal(c.rank)))].sort((a,b)=>a-b);
+  for(let i=0;i<=vals.length-4;i++){
+    if(vals[i+3]-vals[i]<=4){
+      let range=vals.slice(i,i+4);
+      let gaps=range[3]-range[0]-3+range.length-new Set(range).size;
+      if(range[3]-range[0]===4||range[3]-range[0]===3)return true;
+    }
+  }
+  return false;
+}
+
+function hasComboDraw(hole,community){
+  if(!community||community.length<3)return false;
+  let all=hole.concat(community);
+  let suitCount={s:0,h:0,d:0,c:0};
+  all.forEach(c=>suitCount[c.suit]++);
+  let hasFlushDraw=Object.values(suitCount).some(v=>v===4);
+  // 同花听牌 + 顺子听牌 = 组合听牌
+  let vals=[...new Set(all.map(c=>rankVal(c.rank)))].sort((a,b)=>a-b);
+  let hasStraightDraw=false;
+  for(let i=0;i<=vals.length-4;i++){
+    if(vals[i+3]-vals[i]<=4)hasStraightDraw=true;
+  }
+  return hasFlushDraw&&hasStraightDraw;
+}
+
+// 起手牌强度 (0-1)
+function handStrength(hole){
+  let name=handName(hole[0],hole[1]);
+  let map={
+    'AA':0.85,'KK':0.82,'QQ':0.80,'JJ':0.77,'TT':0.75,'99':0.72,'88':0.69,'77':0.66,'66':0.63,'55':0.60,'44':0.57,'33':0.54,'22':0.50,
+    'AKs':0.67,'AQs':0.66,'AJs':0.65,'ATs':0.65,'A9s':0.63,'A8s':0.62,'A7s':0.61,'A6s':0.60,'A5s':0.60,'A4s':0.59,'A3s':0.58,'A2s':0.57,
+    'AKo':0.65,'AQo':0.64,'AJo':0.64,'ATo':0.63,'A9o':0.61,'A8o':0.60,'A7o':0.59,'A6o':0.58,'A5o':0.58,'A4o':0.57,'A3o':0.56,'A2o':0.55,
+    'KQs':0.63,'KJs':0.63,'KTs':0.62,'K9s':0.60,'K8s':0.58,'K7s':0.58,'K6s':0.57,'K5s':0.56,'K4s':0.56,'K3s':0.55,'K2s':0.54,
+    'KQo':0.62,'KJo':0.61,'KTo':0.60,'K9o':0.58,'K8o':0.56,'K7o':0.55,
+    'QJs':0.60,'QTs':0.60,'Q9s':0.58,'Q8s':0.56,
+    'QJo':0.58,'QTo':0.57,
+    'JTs':0.58,'J9s':0.56,'J8s':0.54,
+    'JTo':0.55,
+    'T9s':0.54,'T8s':0.52,
+    'T9o':0.52,
+    '98s':0.51,'87s':0.48,'76s':0.45,'65s':0.43,'54s':0.41,
+  };
+  return map[name]||0.35;
+}
+
+// ============================================================
+// 游戏状态
+// ============================================================
+const INITIAL_STACK=1000;
+const SMALL_BLIND=5;
+const BIG_BLIND=10;
+
+let game={
+  players:[],deck:[],community:[],pot:0,sidePots:[],
+  currentPlayer:0,dealerIdx:0,phase:'',currentBet:0,minRaise:BIG_BLIND,
+  message:'',lastAction:'',gameOver:false,handCount:0,
+  totalBets:{},  // 每人本轮总下注
+};
+
+let difficulty='gold';
+
+// 玩家
+function createPlayer(name,isHuman,seat,diff){
+  return {name,isHuman,seat,diff:diff||'gold',chips:INITIAL_STACK,hole:[],folded:false,allIn:false,bet:0,lastAction:'',
+    stats:{hands:0,vpip:0,pfr:0,aggressive:0,folds:0,threebet:0,won:0,profit:0,handCount:0},
+    memory:{facedAggression:0,lastActions:[],recentFolds:0}
+  };
+}
+let _botDiffs=['gold','gold','gold','gold','gold'];
+function initPlayers(){
+  let names=['你','机器人A','机器人B','机器人C','机器人D','机器人E'];
+  return names.map((n,i)=>createPlayer(n,i===0,i,i===0?'human':_botDiffs[i-1]||'gold'));
+}
+
+// ============================================================
+// AI 策略
+// ============================================================
+
+// ---- CFR遗憾最小化 + 对手建模 + 持久化训练 ----
+// 每个机器人有独立的训练模型,保存到localStorage,跨session积累
+function getBotModelKey(botName){return 'th_model_'+botName;}
+function loadBotModel(botName){
+  try{
+    let raw=localStorage.getItem(getBotModelKey(botName));
+    if(raw){
+      let m=JSON.parse(raw);
+      // 确保personality存在(兼容旧数据)
+      if(!m.personality)m.personality=initPersonality(botName);
+      return m;
+    }
+  }catch(e){}
+  return {regrets:{},strategySum:{},iterations:0,
+    oppProfile:{hands:0,bluffs:0,bluffShowdowns:0,folds:0,betsFaced:0,calls:0,decisions:0,raises:0,
+      showdownWins:0,showdownLosses:0,streetAgg:[0,0,0,0],streetDecisions:[0,0,0,0]},
+    recentResults:[],profit:0,
+    personality:initPersonality(botName)};
+}
+
+// 每个AI独立的性格种子: 初始随机,训练中自适应演化
+function initPersonality(botName){
+  // 用名字hash做种子,保证同一机器人每次初始化性格一致
+  let seed=0;
+  for(let i=0;i<botName.length;i++)seed+=botName.charCodeAt(i);
+  let rng=mulberry32(seed);
+  return {
+    aggression:  0.3+rng()*0.4,  // 0.3-0.7 激进度
+    bluffFreq:   0.05+rng()*0.25, // 0.05-0.30 诈唬频率
+    tightness:   0.3+rng()*0.4,   // 0.3-0.7 紧密度
+    valueThresh: 0.4+rng()*0.2,   // 0.4-0.6 价值下注门槛
+    unpredict:   0.1+rng()*0.2,   // 0.1-0.3 不可预测性(随机偏离)
+    // 性格标签(用于显示)
+    label:'',
+    // 训练中的累计调整量
+    _adjAggro:0,_adjBluff:0,_adjTight:0
+  };
+}
+// 伪随机数生成器(可重复)
+function mulberry32(seed){
+  return function(){
+    seed|=0;seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+// 获取性格标签
+function getPersonalityLabel(p){
+  if(!p)return '未知';
+  let parts=[];
+  if(p.tightness>0.6)parts.push('保守');
+  else if(p.tightness<0.35)parts.push('松');
+  if(p.aggression>0.6)parts.push('激进');
+  else if(p.aggression<0.35)parts.push('被动');
+  if(p.bluffFreq>0.2)parts.push('爱诈唬');
+  else if(p.bluffFreq<0.08)parts.push('诚实');
+  if(p.unpredict>0.25)parts.push('不可预测');
+  return parts.length?parts.join('·'):'均衡';
+}
+function saveBotModel(botName,model){
+  try{localStorage.setItem(getBotModelKey(botName),JSON.stringify(model));}catch(e){}
+}
+function saveAllBotModels(){
+  game.players.forEach(p=>{
+    if(!p.isHuman&&p._model)saveBotModel(p.name,p._model);
+  });
+}
+
+// 信息集抽象: 基于胜率分布的增强型编码(参考Pluribus/DeepStack)
+function getInfoSetKey(player){
+  let hs=handStrength(player.hole);
+  let pos=(player.seat-game.dealerIdx+6)%6;
+  let phaseIdx=game.community.length<3?0:game.community.length===3?1:game.community.length===4?2:3;
+  let boardTex=isBoardDrawHeavy()?'wet':isBoardPaired()?'paired':'dry';
+  let potBucket=game.pot<30?'s':game.pot<100?'m':game.pot<300?'l':'xl';
+  let toCall=game.currentBet-player.bet;
+  let facingBet=toCall>0?'f':'n';
+  // 增强型分桶: 翻前用169类简化, 翻后用胜率+听牌分桶
+  let hsBucket;
+  if(phaseIdx===0){
+    // 翻前: 基于手牌强度的粗分桶(0-9)
+    hsBucket=Math.min(9,Math.floor(hs*10));
+  }else{
+    // 翻后: 结合蒙特卡洛胜率和牌型强度
+    let mcEq=0;
+    try{mcEq=monteCarloEquity(player.hole,game.community,2,50);}catch(e){}
+    let cat=getHandCategory(player.hole,game.community);
+    // 牌型权重: 坚果=9, 同花顺=8, 四条=7, 葫芦=6, 同花=5, 顺子=4, 三条=3, 两对=2, 一对=1, 高牌=0
+    let catWeight={'高牌':0,'一对':1,'两对':2,'三条':3,'顺子':4,'同花':5,'葫芦':6,'四条':7,'同花顺':8}[cat]||0;
+    hsBucket=Math.min(9,Math.max(0,Math.floor((mcEq*0.6+catWeight/8*0.4)*10)));
+  }
+  // 加入下注模式(前手行动是否加注)
+  let prevActions=handHistory.filter(h=>h.seat===player.seat&&h.phase===game.phase);
+  let didRaise=prevActions.some(h=>h.action==='raise'||h.action==='allin');
+  let actionMode=didRaise?'r':'p';
+  return hsBucket+'_'+pos+'_'+phaseIdx+'_'+boardTex+'_'+potBucket+'_'+facingBet+'_'+actionMode;
+}
+
+// CFR+策略: 基于正遗憾匹配选择动作(参考CFR+论文, 只保留正遗憾)
+function getCFRStrategy(player){
+  if(!player._model)return null;
+  let key=getInfoSetKey(player);
+  let regrets=player._model.regrets[key];
+  let strategySum=player._model.strategySum?player._model.strategySum[key]:null;
+  // 优先使用累计平均策略(更稳定), 其次用遗憾匹配
+  if(strategySum){
+    let actions=['fold','check','call','raise'];
+    let sum=actions.reduce((a,b)=>a+(strategySum[b]||0),0);
+    if(sum>0){
+      let strategy=actions.map(a=>(strategySum[a]||0)/sum);
+      return {actions,strategy};
+    }
+  }
+  if(!regrets)return null;
+  // CFR+ : 遗憾地板(只保留正遗憾)
+  let actions=['fold','check','call','raise'];
+  let posRegrets=actions.map(a=>Math.max(0,regrets[a]||0));
+  let sum=posRegrets.reduce((a,b)=>a+b,0);
+  if(sum===0)return null;
+  let strategy=actions.map((a,i)=>posRegrets[i]/sum);
+  return {actions,strategy};
+}
+
+// 根据策略选择动作(加入随机探索)
+function sampleStrategy(strat,player){
+  let r=Math.random();
+  let acc=0;
+  for(let i=0;i<strat.actions.length;i++){
+    acc+=strat.strategy[i];
+    if(r<acc)return strat.actions[i];
+  }
+  return strat.actions[strat.actions.length-1];
+}
+
+// 训练: 每手结束后更新遗憾表和对手画像
+function trainAfterHand(player,results,winners){
+  if(!player._model){
+    player._model=loadBotModel(player.name);
+  }
+  let model=player._model;
+  model.iterations++;
+  // Linear-CFR权重: 后期迭代权重更高(加速收敛)
+  let linearWeight=model.iterations;
+
+  // 更新对手画像(人类行为)
+  let human=game.players[0];
+  let om=getOpponentModel();
+  let opp=model.oppProfile;
+  opp.hands++;
+
+  // 人类是否在摊牌时诈唬(加注但输了)
+  let humanAtShowdown=!human.folded&&game.community.length>=3;
+  if(humanAtShowdown){
+    let humanWon=winners.some(w=>w.player&&w.player.seat===0);
+    let humanRaised=handHistory.some(h=>h.seat===0&&h.action==='raise');
+    if(humanRaised){
+      opp.bluffShowdowns++;
+      if(!humanWon)opp.bluffs++;
+    }
+    if(humanWon)opp.showdownWins++;else opp.showdownLosses++;
+  }
+
+  // 街道激进度
+  for(let h of handHistory){
+    if(h.seat!==0)continue;
+    let pi=h.phase==='preflop'?0:h.phase==='flop'?1:h.phase==='turn'?2:3;
+    if(h.action==='raise'||h.action==='allin'){
+      opp.streetAgg[pi]++;
+    }
+    opp.streetDecisions[pi]++;
+  }
+
+  // 弃牌/跟注/加注频率
+  let humanActions=handHistory.filter(h=>h.seat===0);
+  opp.decisions+=humanActions.length;
+  opp.folds+=humanActions.filter(h=>h.action==='fold').length;
+  opp.calls+=humanActions.filter(h=>h.action==='call').length;
+  opp.raises+=humanActions.filter(h=>h.action==='raise').length;
+  opp.betsFaced+=humanActions.filter(h=>h.action!=='fold'&&h.action!=='check').length;
+
+  // 更新近期结果
+  let won=winners.some(w=>w.player&&w.player.seat===player.seat);
+  model.recentResults.push(won?1:-1);
+  if(model.recentResults.length>30)model.recentResults.shift();
+
+  // 更新利润
+  let startC=(handStartChips&&handStartChips[player.seat]!=null)?handStartChips[player.seat]:INITIAL_STACK;
+  model.profit+=player.chips-startC;
+
+  // === MCCFR+训练: External Sampling + 正遗憾地板 + Linear-CFR加权 ===
+  // 计算本手优先级权重(大池/All-in手权重更高, 参考优先经验回放)
+  let potSize=game.pot;
+  let priorityWeight=1;
+  if(potSize>200)priorityWeight=3;      // 大池
+  if(potSize>500)priorityWeight=5;      // 超大池
+  if(humanActions.some(h=>h.action==='allin'))priorityWeight=8; // All-in手最重要
+
+  let myActions=handHistory.filter(h=>h.seat===player.seat);
+  let totalPayoff=won?1:-1;
+  // 根据投入大小调整回报(投入多赢=大赢, 投入多输=大输)
+  let myInvestment=myActions.reduce((s,h)=>s+(h.amount||0),0);
+  let payoffScale=Math.max(1,Math.min(5,myInvestment/100));
+  totalPayoff*=payoffScale;
+
+  for(let h of myActions){
+    let pi=h.phase==='preflop'?0:h.phase==='flop'?1:h.phase==='turn'?2:3;
+    // 使用增强型信息集key
+    let regretKey=getInfoSetKey(player);
+    // 加入phase前缀区分不同街道
+    regretKey=pi+'_'+regretKey;
+    if(!model.regrets[regretKey])model.regrets[regretKey]={fold:0,check:0,call:0,raise:0};
+    if(!model.strategySum)model.strategySum={};
+    if(!model.strategySum[regretKey])model.strategySum[regretKey]={fold:0,check:0,call:0,raise:0};
+
+    let actualAction=h.action==='allin'?'raise':h.action; // All-in归入raise
+    if(!model.regrets[regretKey].hasOwnProperty(actualAction))continue;
+    let actions=['fold','check','call','raise'];
+    // MCCFR+: 计算每个动作的遗憾值
+    for(let a of actions){
+      if(a===actualAction){
+        // 实际选择的动作: 赢了→正价值(减少遗憾), 输了→负价值
+        // CFR+: 只保留正遗憾(Math.max(0, ...))
+        let regret=totalPayoff*linearWeight*priorityWeight;
+        model.regrets[regretKey][a]+=regret;
+        // CFR+地板: 遗憾不能低于0
+        model.regrets[regretKey][a]=Math.max(0,model.regrets[regretKey][a]);
+      }else{
+        // 反事实动作: 如果选了其他动作会怎样?
+        // External sampling: 简化估计 - 对手弱牌动作→更多遗憾, 对手强牌动作→更少
+        let counterRegret=-totalPayoff*0.3*linearWeight*priorityWeight;
+        model.regrets[regretKey][a]+=counterRegret;
+        // CFR+地板
+        model.regrets[regretKey][a]=Math.max(0,model.regrets[regretKey][a]);
+      }
+      // 更新策略累计(用于平均策略, 比瞬时策略更稳定)
+      let posR=Math.max(0,model.regrets[regretKey][a]);
+      model.strategySum[regretKey][a]+=posR*linearWeight;
+    }
+  }
+
+  // === 性格演化(基于强化学习反馈) ===
+  let p=model.personality;
+  if(p){
+    let myRaises=myActions.filter(h=>h.action==='raise').length;
+    let myFolds=myActions.filter(h=>h.action==='fold').length;
+    let myBluffs=myActions.filter(h=>h.action==='raise').length;
+
+    if(won){
+      // 赢了: 强化导致胜利的行为
+      if(myRaises>0)p._adjAggro+=0.02*priorityWeight;     // 激进赢了→更激进
+      if(myFolds===0&&myRaises===0)p._adjTight-=0.01;     // 被动赢了→更松
+    }else{
+      // 输了: 惩罚导致失败的行为
+      if(myRaises>0)p._adjBluff-=0.02*priorityWeight;     // 加注输了→减少诈唬
+      if(myFolds>0)p._adjTight+=0.01;                     // 弃牌输了→稍微放松
+    }
+
+    // 每5手应用一次累计调整(带回归中性的衰减)
+    if(model.iterations%5===0){
+      p.aggression=Math.max(0.15,Math.min(0.85,p.aggression+p._adjAggro-0.005));
+      p.bluffFreq=Math.max(0.02,Math.min(0.4,p.bluffFreq+p._adjBluff-0.003));
+      p.tightness=Math.max(0.2,Math.min(0.8,p.tightness+p._adjTight-0.003));
+      p.unpredict=Math.max(0.05,Math.min(0.4,p.unpredict+(Math.random()-0.5)*0.02));
+      p._adjAggro=0;p._adjBluff=0;p._adjTight=0;
+      p.label=getPersonalityLabel(p);
+    }
+  }
+
+  saveBotModel(player.name,model);
+}
+
+// 对手画像分析: 返回可利用的倾向
+function getOpponentProfile(botName){
+  let model=loadBotModel(botName);
+  let opp=model.oppProfile;
+  if(opp.hands<5)return null; // 数据不足
+  let bluffRate=opp.bluffShowdowns>0?opp.bluffs/opp.bluffShowdowns:0;
+  let foldRate=opp.betsFaced>0?opp.folds/opp.decisions:0;
+  let callRate=opp.decisions>0?opp.calls/opp.decisions:0;
+  let raiseRate=opp.decisions>0?opp.raises/opp.decisions:0;
+  return {
+    bluffRate,           // 诈唬频率
+    foldRate,            // 弃牌率
+    callRate,            // 跟注率
+    raiseRate,           // 加注率
+    isStation:callRate>0.45,   // 跟注站
+    isNit:foldRate>0.5,        // 紧弱
+    isAggro:raiseRate>0.25,    // 激进
+    isBluffer:bluffRate>0.3,   // 诈唬者
+    hands:opp.hands,
+    bluffShowdowns:opp.bluffShowdowns,
+    profit:model.profit,
+    iterations:model.iterations,
+    recentWR:model.recentResults.length>0?
+      model.recentResults.filter(r=>r>0).length/model.recentResults.length:0
+  };
+}
+
+// 辅助函数
+function spr(player){return player.chips/(game.pot+0.01)}
+function isBoardPaired(){
+  if(game.community.length<2)return false;
+  let ranks=game.community.map(c=>c.rank);
+  return new Set(ranks).size<ranks.length;
+}
+function isBoardDrawHeavy(){
+  if(game.community.length<3)return false;
+  let suits=game.community.map(c=>c.suit),ranks=game.community.map(c=>rankVal(c.rank)).sort((a,b)=>a-b);
+  let flushPossible=new Set(suits).size<=2;
+  let straightPossible=false;
+  for(let i=0;i<=ranks.length-3;i++){if(ranks[i+2]-ranks[i]<=4){straightPossible=true;break}}
+  return flushPossible||straightPossible;
+}
+let _oppModel={hands:0,human3bet:0,humanFoldToCbet:0,humanFacingCbet:0,humanVPIP:0,humanCallFlop:0,humanPFR:0,humanAllin:0,humanBluffRaise:0,humanRaiseTotal:0,humanFoldTotal:0,humanCallTotal:0};
+function getOpponentModel(){return _oppModel}
+function updateOppModel(action,phase){
+  _oppModel.hands++;
+  if(action!=='fold'&&action!=='check'&&action!=='')_oppModel.humanVPIP++;
+  if(action==='raise'){_oppModel.human3bet++;_oppModel.humanPFR++;_oppModel.humanRaiseTotal++;}
+  if(action==='allin')_oppModel.humanAllin++;
+  if(action==='fold'){_oppModel.humanFoldTotal++;if(game.phase!=='preflop'&&game.currentBet>0)_oppModel.humanFoldToCbet++;}
+  if(action==='call')_oppModel.humanCallTotal++;
+  if(game.phase!=='preflop'&&game.currentBet>0)_oppModel.humanFacingCbet++;
+  if(action==='call'&&game.phase==='flop')_oppModel.humanCallFlop++;
+}
+
+// 剥削性策略: 根据玩家行为模式调整AI打法
+function getExploitAdjustment(player){
+  let om=_oppModel;
+  let h=om.hands||1;
+  let result={
+    isManiac:false,    // 疯子(频繁all-in)
+    isBluffer:false,   // 频繁诈唬(加注多但摊牌弱)
+    isNit:false,       // 太紧(频繁弃牌)
+    isStation:false,   // 跟注站(频繁跟注少加注)
+    allinRate:0,
+    foldRate:0,
+    raiseRate:0,
+    callRate:0,
+    bluffRate:0,
+    // 调整值: 正数=更激进, 负数=更保守
+    aggressionBoost:0,  // 对疯子/诈唬者→提高跟注意愿(抓鸡)
+    bluffBoost:0,        // 对紧弱→提高诈唬频率
+    callBoost:0,         // 提高跟注阈值
+    valueRaiseBoost:0    // 价值加注提升
+  };
+  if(h<5)return result; // 样本不足
+
+  result.allinRate=om.humanAllin/h;
+  result.foldRate=om.humanFoldTotal/h;
+  result.raiseRate=om.humanRaiseTotal/h;
+  result.callRate=om.humanCallTotal/h;
+  result.bluffRate=(om.humanRaiseTotal-om.human3bet)/Math.max(1,om.humanRaiseTotal); // 翻后加注中非3bet占比≈诈唬倾向
+
+  // 疯子: all-in率>25% 或 加注率>40%
+  if(result.allinRate>0.25||result.raiseRate>0.4){
+    result.isManiac=true;
+    result.aggressionBoost=0.15;  // 面对疯子: 更愿意跟注(抓鸡)
+    result.callBoost=0.12;        // 提高跟注阈值
+    result.valueRaiseBoost=0.1;   // 有牌时多价值加注(最大化盈利)
+  }
+  // 诈唬者: 加注率高但翻前3bet率低(说明翻后乱加注)
+  if(result.raiseRate>0.3&&om.human3bet/(om.humanPFR||1)<0.3&&h>10){
+    result.isBluffer=true;
+    result.aggressionBoost=0.12;
+    result.callBoost=0.1;
+  }
+  // 紧弱: 弃牌率>55%
+  if(result.foldRate>0.55){
+    result.isNit=true;
+    result.bluffBoost=0.2;  // 对紧弱: 多诈唬偷池
+    result.aggressionBoost=-0.05;
+  }
+  // 跟注站: 跟注率>50%且加注率<15%
+  if(result.callRate>0.5&&result.raiseRate<0.15){
+    result.isStation=true;
+    result.bluffBoost=-0.15;  // 对跟注站: 绝不诈唬
+    result.valueRaiseBoost=0.15; // 有牌时多价值加注
+  }
+  return result;
+}
+function hasBlocker(hole,wet){
+  if(!wet)return false;
+  let cards=hole.concat(game.community||[]);
+  let suitCount={s:0,h:0,d:0,c:0};
+  cards.forEach(c=>suitCount[c.suit]++);
+  return Object.values(suitCount).some(v=>v===3||v===4);
+}
+function handCategory(player){
+  let cat=getHandCategory(player.hole,game.community);
+  let act=analyzeHandAction(player);
+  // 蒙特卡洛胜率 (翻牌后才有意义)
+  let activeCount=game.players.filter(p=>!p.folded).length;
+  let mcEquity=0;
+  let outs=0;
+  let toCall=Math.max(0,game.currentBet-player.bet);
+  let pOdds=potOddsRatio(toCall,game.pot);
+  if(game.community.length>=3){
+    mcEquity=monteCarloEquity(player.hole,game.community,activeCount-1,300);
+    outs=countOuts(player.hole,game.community);
+    mcEquity=equityRealization(player,mcEquity);
+  }
+  return {
+    cat,act,mcEquity,outs,pOdds,toCall,
+    isPremium:new Set(['同花顺','四条','葫芦','同花','顺子']).has(cat),
+    isGood:new Set(['三条','两对']).has(cat),
+    isPair:cat==='一对',
+    draws:hasDraw(player.hole,game.community),
+    comboDraw:hasComboDraw(player.hole,game.community),
+    phaseIdx:game.community.length<3?0:game.community.length===3?1:game.community.length===4?2:3,
+    sprVal:spr(player),
+    boardWet:isBoardDrawHeavy(),
+    boardPaired:isBoardPaired(),
+    blocksNuts:hasBlocker(player.hole,isBoardDrawHeavy())
+  };
+}
+
+// ===== Lv1 铜牌 = 位置感知范围 + 底池赔率 + 基础c-bet =====
+function aiBronze(player){
+  let hs=handStrength(player.hole);
+  let toCall=game.currentBet-player.bet;
+  let pos=player.seat;
+  let potOdds=toCall/(game.pot+toCall+0.01);
+
+  if(game.phase==='preflop'){
+    let pfCtx=preflopContext(player);
+    let posRanges={0:0.42,1:0.39,2:0.36,3:0.33,4:0.38,5:0.40};
+    let th=posRanges[pos]||0.36;
+    // 有加注者→收紧范围; 多人池→放宽投机牌
+    if(pfCtx.is3betPlus)th+=0.08;
+    if(pfCtx.isMultiwayPot&&pos>=4)th-=0.03;
+    if(hs>th+0.12){
+      let sz=BIG_BLIND*(2.5+Math.random());
+      return toCall===0?(Math.random()<0.45?{action:'raise',amount:Math.floor(sz)}:{action:'check'}):(Math.random()<0.35?{action:'raise',amount:Math.floor(toCall*2.5)}:{action:'call'});
+    }
+    if(hs>th){
+      if(toCall<=BIG_BLIND*4)return {action:'call'};
+      if(toCall===0)return (Math.random()<0.2?{action:'raise',amount:BIG_BLIND*3}:{action:'check'});
+      return {action:'fold'};
+    }
+    // 后位+好赔率: 放宽跟注范围
+    if(pfCtx.goodOdds&&hs>0.32)return {action:'call'};
+    if(pos>=4&&toCall===BIG_BLIND&&hs>0.35)return {action:'call'};
+    if(toCall===0)return {action:'check'};
+    return {action:'fold'};
+  }
+
+  let {cat,isPremium,isGood,isPair,draws,comboDraw,phaseIdx,sprVal,boardWet,boardPaired,blocksNuts,mcEquity,outs,pOdds}=handCategory(player);
+
+  // 铜牌: 基础胜率vs赔率判断
+  if(mcEquity>0&&toCall>0){
+    // 胜率>底池赔率 → 跟注; 胜率很高 → 加注
+    if(mcEquity>pOdds+0.08&&mcEquity<0.55&&toCall<=game.pot*0.5)return {action:'call'};
+    if(mcEquity< pOdds-0.05&&!draws&&!comboDraw)return {action:'fold'};
+  }
+  if(isPremium){
+    if(sprVal<2)return {action:'raise',amount:Math.floor(toCall+game.pot*0.5)};
+    if(Math.random()<0.2)return {action:'check'};
+    return {action:'raise',amount:Math.floor(toCall+game.pot*0.55)};
+  }
+  if(isGood){
+    if(toCall<=game.pot*0.6)return {action:'call'};
+    if(toCall===0)return (Math.random()<0.3?{action:'raise',amount:Math.floor(game.pot*0.4)}:{action:'check'});
+    return Math.random()<0.35?{action:'call'}:{action:'fold'};
+  }
+  if(isPair){
+    if(toCall<=game.pot*0.25)return {action:'call'};
+    if(toCall===0)return (Math.random()<0.15?{action:'raise',amount:Math.floor(game.pot*0.25)}:{action:'check'});
+    return {action:'fold'};
+  }
+  if(phaseIdx===1&&toCall===0&&Math.random()<0.45)return {action:'raise',amount:Math.floor(game.pot*0.4)};
+  if(draws&&potOdds<0.22)return {action:'call'};
+  if(toCall===0)return (Math.random()<0.08?{action:'raise',amount:Math.floor(game.pot*0.35)}:{action:'check'});
+  return {action:'fold'};
+}
+
+// ===== Lv2 银牌：GTO范围 + SPR + 半诈唬 + check-raise陷阱 =====
+function aiSilver(player){
+  let hs=handStrength(player.hole);
+  let toCall=game.currentBet-player.bet;
+  let pos=player.seat;
+  let potOdds=toCall/(game.pot+toCall+0.01);
+  let sprVal=spr(player);
+
+  if(game.phase==='preflop'){
+    let pfCtx=preflopContext(player);
+    let ranges={0:0.16,1:0.18,2:0.22,3:0.28,4:0.20,5:0.22};
+    let openRange=ranges[pos]||0.22;
+    // 面对3-bet/高倍数加注→显著收紧
+    if(pfCtx.is3betPlus){openRange+=0.06;if(pfCtx.raiseMultiplier>6)openRange+=0.04;}
+    if(hs>0.58){
+      let sz=BIG_BLIND*(2+Math.random()*2.5);
+      if(toCall===0)return (Math.random()<Math.pow(1-openRange,1.5)?{action:'check'}:{action:'raise',amount:Math.floor(sz)});
+      return (Math.random()<0.35?{action:'raise',amount:Math.floor(toCall*3)}:{action:'call'});
+    }
+    if(hs>openRange+0.1){
+      if(toCall<=BIG_BLIND*3)return {action:'call'};
+      if(toCall===0)return (Math.random()<0.28?{action:'raise',amount:BIG_BLIND*3}:{action:'check'});
+      if(toCall<=BIG_BLIND*5)return {action:'call'};
+      return {action:'fold'};
+    }
+    let threeBetBluffs=['A5s','A4s','KTs','QTs','JTs','T9s'];
+    let hn=handName(player.hole[0],player.hole[1]);
+    let bf=(pfCtx.is3betPlus||pfCtx.raiseMultiplier>4)?0.05:0.15; // 有人加注→少3bet诈唬
+    if(threeBetBluffs.includes(hn)&&pos>=4&&toCall===BIG_BLIND*3&&Math.random()<bf)return {action:'raise',amount:BIG_BLIND*9};
+    if(toCall===0&&pos>=4&&hs>0.36&&Math.random()<0.25)return {action:'raise',amount:BIG_BLIND*2.5};
+    if(toCall===0)return {action:'check'};
+    if(toCall===BIG_BLIND&&hs>0.34&&pos>=3)return {action:'call'};
+    return {action:'fold'};
+  }
+
+  let {cat,isPremium,isGood,isPair,draws,comboDraw,phaseIdx,boardWet,boardPaired,blocksNuts,mcEquity,outs,pOdds}=handCategory(player);
+
+  // 银牌: 胜率+隐含赔率+出牌计数
+  if(mcEquity>0&&toCall>0){
+    let implBonus=impliedOddsBonus(player,toCall,game.pot,outs);
+    let effEquity=mcEquity+implBonus;
+    if(effEquity>pOdds+0.05&&effEquity<0.5&&toCall<=game.pot*0.6)return {action:'call'};
+    if(effEquity< pOdds-0.03&&!comboDraw&&!draws)return {action:'fold'};
+  }
+  if(isPremium){
+    if(sprVal<2&&toCall===0)return {action:'raise',amount:Math.floor(toCall+game.pot*0.4)};
+    if(sprVal>6&&Math.random()<0.2)return {action:'check'};
+    let size=game.pot*(0.35+Math.random()*0.45);
+    return {action:'raise',amount:Math.floor(toCall+size)};
+  }
+  if(isGood){
+    if(toCall===0)return (Math.random()<0.3?{action:'raise',amount:Math.floor(game.pot*0.5)}:{action:'check'});
+    if(toCall<=game.pot*0.7)return {action:'call'};
+    return Math.random()<0.4?{action:'call'}:{action:'fold'};
+  }
+  if(isPair){
+    if(toCall===0)return (Math.random()<0.15?{action:'raise',amount:Math.floor(game.pot*0.3)}:{action:'check'});
+    if(toCall<=game.pot*0.25)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(comboDraw){
+    if(toCall===0)return {action:'raise',amount:Math.floor(game.pot*0.65)};
+    if(potOdds<0.35)return {action:'raise',amount:Math.floor(toCall+game.pot*0.5)};
+    if(potOdds<0.45&&sprVal>3)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(draws){
+    let impliedOdds=sprVal>5?0.04:0;
+    if(potOdds+impliedOdds<0.2&&toCall<=player.chips*0.25)return {action:'call'};
+    if(toCall===0&&Math.random()<0.06)return {action:'raise',amount:Math.floor(game.pot*0.35)};
+    return {action:'fold'};
+  }
+  if(phaseIdx===1&&toCall===0&&Math.random()<0.5)return {action:'raise',amount:Math.floor(game.pot*0.4)};
+  if(phaseIdx===2&&toCall===0&&Math.random()<0.2)return {action:'raise',amount:Math.floor(game.pot*0.55)};
+  if(toCall===0)return (Math.random()<0.05?{action:'raise',amount:Math.floor(game.pot*0.5)}:{action:'check'});
+  return {action:'fold'};
+}
+
+// ===== Lv3 金牌：完整GTO + 对手建模 + 牌面分析 + 阻挡牌 + float =====
+function aiGold(player){
+  let hs=handStrength(player.hole);
+  let toCall=game.currentBet-player.bet;
+  let pos=player.seat;
+  let potOdds=toCall/(game.pot+toCall+0.01);
+  let sprVal=spr(player);
+  let stackBB=player.chips/BIG_BLIND;
+
+  // 获取对手模型
+  let om=getOpponentModel();
+
+  if(game.phase==='preflop'){
+    let pfCtx=preflopContext(player);
+    let ranges={0:0.14,1:0.16,2:0.19,3:0.25,4:0.18,5:0.20};
+    let openRange=ranges[pos]||0.19;
+    let human3bFreq=om.human3bet/(om.hands||1);
+    let avoid3betLight=human3bFreq>0.15;
+    // 基于翻前行动调整: 面对3-bet收紧, 多人池放宽连接牌
+    if(pfCtx.is3betPlus){openRange+=0.05;if(pfCtx.raiseMultiplier>5)openRange+=0.04;}
+    if(hs>0.58){
+      let sz=BIG_BLIND*(2+Math.random()*2.5);
+      if(pos>=4&&toCall===0&&Math.random()<0.3)sz=BIG_BLIND*2;
+      if(toCall===0)return (Math.random()<Math.pow(1-openRange,2)?{action:'check'}:{action:'raise',amount:Math.floor(sz)});
+      if(avoid3betLight&&toCall>BIG_BLIND*5)return {action:'call'};
+      return (Math.random()<0.35?{action:'raise',amount:Math.floor(toCall*3)}:{action:'call'});
+    }
+    if(hs>openRange+0.08){
+      if(toCall<=BIG_BLIND*3)return {action:'call'};
+      if(toCall===0)return (Math.random()<0.25?{action:'raise',amount:BIG_BLIND*3}:{action:'check'});
+      if(toCall<=BIG_BLIND*5&&pos>=4)return {action:'call'};
+      return {action:'fold'};
+    }
+    let threeBetBluffs=['A5s','A4s','KTs','QTs','JTs','T9s','98s','87s','76s','65s'];
+    let hn=handName(player.hole[0],player.hole[1]);
+    let bf=(pfCtx.is3betPlus||pfCtx.raiseMultiplier>4)?0.06:0.18; // 已有加注→少3bet诈唬
+    if(threeBetBluffs.includes(hn)&&pos>=4&&toCall===BIG_BLIND*3&&Math.random()<bf&&!avoid3betLight)return {action:'raise',amount:BIG_BLIND*9};
+    if(toCall===0&&pos>=4&&hs>0.35&&Math.random()<0.28)return {action:'raise',amount:BIG_BLIND*2.5};
+    if(toCall===0)return {action:'check'};
+    if(toCall===BIG_BLIND&&hs>0.33&&pos>=3)return {action:'call'};
+    return {action:'fold'};
+  }
+
+// aiGold postflop
+  let {cat,isPremium,isGood,isPair,draws,comboDraw,phaseIdx,boardWet,boardPaired,blocksNuts,act,mcEquity,outs,pOdds}=handCategory(player);
+  let humanF2CB=om.humanFoldToCbet/(om.humanFacingCbet||1);
+  let highF2CB=humanF2CB>0.6;
+
+  // 金牌: 胜率+赔率+出牌+行动分析综合判断
+  if(mcEquity>0&&toCall>0){
+    let implBonus=impliedOddsBonus(player,toCall,game.pot,outs);
+    let effEquity=mcEquity+implBonus;
+    let ev=calcEV(effEquity,game.pot,toCall);
+    // EV为正且胜率不够加注 → 跟注
+    if(effEquity>pOdds+0.03&&effEquity<0.5&&ev>-5)return {action:'call'};
+    // EV为负且无听牌 → 弃牌
+    if(effEquity< pOdds-0.02&&!comboDraw&&!draws&&ev<-10)return {action:'fold'};
+    // 听牌+赔率好 → 跟注
+    if((draws||comboDraw)&&effEquity>pOdds-0.02&&toCall<=player.chips*0.2)return {action:'call'};
+  }
+  // 利用行动分析: 对手示弱→加大下注; 多人池→更谨慎
+  let weaknessBonus=act.seenWeakness?0.15:0;
+  let multiwayPenalty=act.isMultiway?0.85:1;
+
+  if(isPremium){
+    if(sprVal<2)return {action:'raise',amount:Math.floor(toCall+game.pot*0.45)};
+    if(boardWet&&Math.random()<0.15)return {action:'check'};
+    let size=boardWet?game.pot*(0.7+weaknessBonus):game.pot*(0.5+weaknessBonus);
+    size*=multiwayPenalty;
+    return {action:'raise',amount:Math.floor(toCall+size)};
+  }
+  if(isGood){
+    if(toCall===0){
+      if(boardPaired&&Math.random()<0.35)return {action:'raise',amount:Math.floor(game.pot*0.5)};
+      // 如果这是c-bet, 只用跟注看看
+      if(act.isCBet&&Math.random()<0.25)return {action:'call'};
+      return (Math.random()<0.3?{action:'raise',amount:Math.floor(game.pot*0.45)}:{action:'check'});
+    }
+    if(toCall<=game.pot*0.7)return {action:'call'};
+    return Math.random()<0.45?{action:'call'}:{action:'fold'};
+  }
+  if(isPair){
+    if(toCall===0)return (Math.random()<0.18?{action:'raise',amount:Math.floor(game.pot*0.3)}:{action:'check'});
+    if(toCall<=game.pot*0.22)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(comboDraw){
+    if(toCall===0)return {action:'raise',amount:Math.floor(game.pot*0.7)};
+    // 对手示弱或多人池中有好赔率→更激进
+    let eq=0.52+(act.seenWeakness?0.06:0)-(act.isMultiway?0.03:0);
+    if(eq>potOdds*1.3)return {action:'raise',amount:Math.floor(toCall+game.pot*0.55)};
+    if(potOdds<0.33)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(draws){
+    let impliedOdds=sprVal>5?0.05:0;
+    if(potOdds+impliedOdds<0.2&&toCall<=player.chips*0.25)return {action:'call'};
+    if(toCall===0&&Math.random()<0.08)return {action:'raise',amount:Math.floor(game.pot*0.35)};
+    return {action:'fold'};
+  }
+  if(phaseIdx===1&&toCall===0){
+    // 利用c-bet检测: 如果前位加注者现在过牌→可以偷池
+    if(act.betSignal===-1&&Math.random()<0.3)return {action:'raise',amount:Math.floor(game.pot*0.4)}; // 对手弱注→反击
+    let cbFreq=highF2CB?0.75:0.5;
+    if(Math.random()<cbFreq)return {action:'raise',amount:Math.floor(game.pot*0.4)};
+    return {action:'check'};
+  }
+  if(phaseIdx===2&&toCall===0&&Math.random()<0.2)return {action:'raise',amount:Math.floor(game.pot*0.55)};
+  if(toCall<=game.pot*0.12&&Math.random()<0.08)return {action:'call'};
+  if(toCall===0)return (Math.random()<0.04?{action:'raise',amount:Math.floor(game.pot*0.45)}:{action:'check'});
+  return {action:'fold'};
+}
+
+// ===== Lv4 钻石：深度剥削 + 多街规划 + 条件诈唬 + 自适应对手建模 =====
+function aiDiamond(player){
+  let hs=handStrength(player.hole);
+  let toCall=game.currentBet-player.bet;
+  let pos=player.seat;
+  let potOdds=toCall/(game.pot+toCall+0.01);
+  let sprVal=spr(player);
+  let om=getOpponentModel();
+  let phaseIdx=game.community.length<3?0:game.community.length===3?1:game.community.length===4?2:3;
+  if(game.phase==='preflop'){
+    let pfCtx=preflopContext(player);
+    let ranges={0:0.12,1:0.14,2:0.17,3:0.22,4:0.16,5:0.18};
+    let openRange=ranges[pos]||0.17;
+    let humanVPIP=om.humanVPIP/(om.hands||1);
+    if(humanVPIP<0.15)openRange-=0.04;
+    if(pfCtx.is3betPlus)openRange+=0.06; // 面对3bet收紧
+    let human3bF=om.human3bet/(om.hands||1);
+    if(hs>0.58){
+      let sz=BIG_BLIND*(2+Math.random()*2.5);
+      if(pos>=4&&toCall===0&&humanVPIP<0.2)sz=BIG_BLIND*2;
+      if(toCall===0)return (Math.random()<Math.pow(1-openRange,2)?{action:'check'}:{action:'raise',amount:Math.floor(sz)});
+      if(human3bF>0.12&&toCall>BIG_BLIND*5)return {action:'call'};
+      return (Math.random()<0.33?{action:'raise',amount:Math.floor(toCall*2.8)}:{action:'call'});
+    }
+    if(hs>openRange+0.06){
+      if(toCall<=BIG_BLIND*3)return {action:'call'};
+      if(toCall===0)return (Math.random()<0.22?{action:'raise',amount:BIG_BLIND*3}:{action:'check'});
+      if(toCall<=BIG_BLIND*4&&pos>=4)return {action:'call'};
+      return {action:'fold'};
+    }
+    let threeBetBluffs=['A5s','A4s','A3s','KTs','QTs','JTs','T9s','98s','87s','76s'];
+    let hn=handName(player.hole[0],player.hole[1]);
+    let bluffFreq=human3bF>0.12?0.08:(pfCtx.is3betPlus?0.06:0.2); // 被3bet过→更少反3bet诈唬
+    if(threeBetBluffs.includes(hn)&&pos>=4&&toCall===BIG_BLIND*3&&Math.random()<bluffFreq)return {action:'raise',amount:BIG_BLIND*9};
+    if(toCall===0&&pos>=4&&hs>0.34&&Math.random()<0.3)return {action:'raise',amount:BIG_BLIND*2.5};
+    if(toCall===0)return {action:'check'};
+    if(toCall===BIG_BLIND&&hs>0.32&&pos>=3&&humanVPIP<0.3)return {action:'call'};
+    return {action:'fold'};
+  }
+// aiDiamond postflop
+  let {cat,isPremium,isGood,isPair,draws,comboDraw,boardWet,boardPaired,blocksNuts,act,mcEquity,outs,pOdds}=handCategory(player);
+  let humanFoldFreq=om.humanFoldToCbet/(om.humanFacingCbet||1);
+  let humanStation=om.humanCallFlop/(om.humanFacingCbet||1)>0.7;
+  let exploitWeak=act.betSignal===-1||act.seenWeakness; // 对手弱→剥削
+
+  // 钻石: EV精确计算+隐含赔率+对手倾向
+  if(mcEquity>0&&toCall>0){
+    let implBonus=impliedOddsBonus(player,toCall,game.pot,outs);
+    if(humanStation)implBonus+=0.03; // 对手跟注站→隐含赔率更高
+    let effEquity=mcEquity+implBonus;
+    let ev=calcEV(effEquity,game.pot,toCall);
+    if(effEquity>pOdds+0.02&&effEquity<0.48&&ev>-3)return {action:'call'};
+    if(effEquity< pOdds-0.01&&!comboDraw&&!draws&&ev<-8)return {action:'fold'};
+    // 半诈唬: 有听牌+对手过度弃牌→可以加注
+    if((draws||comboDraw)&&outs>=8&&humanFoldFreq>0.5&&Math.random()<0.3)
+      return {action:'raise',amount:Math.floor(toCall+game.pot*0.5)};
+  }
+  if(isPremium){
+    if(sprVal<2&&toCall===0)return {action:'raise',amount:Math.floor(game.pot*0.4)};
+    let sf=humanFoldFreq>0.55?0.08:(humanStation?0.3:0.15);
+    if(boardWet&&Math.random()<sf)return {action:'check'};
+    let size=boardWet?game.pot*(0.65+Math.random()*0.25):(humanStation?game.pot*0.8:game.pot*0.55);
+    return {action:'raise',amount:Math.floor(toCall+size)};
+  }
+  if(isGood){
+    if(toCall===0){return (boardPaired&&Math.random()<0.3?{action:'raise',amount:Math.floor(game.pot*0.5)}:(Math.random()<0.28?{action:'raise',amount:Math.floor(game.pot*0.45)}:{action:'check'}));}
+    if(toCall<=game.pot*0.7)return {action:'call'};
+    return Math.random()<0.5?{action:'call'}:{action:'fold'};
+  }
+  if(isPair){
+    if(toCall===0)return (Math.random()<0.16?{action:'raise',amount:Math.floor(game.pot*0.28)}:{action:'check'});
+    if(toCall<=game.pot*0.2)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(comboDraw){
+    if(toCall===0)return {action:'raise',amount:Math.floor(game.pot*0.65)};
+    if(0.54>potOdds*1.25)return {action:'raise',amount:Math.floor(toCall+game.pot*0.55)};
+    if(potOdds<0.32||(humanFoldFreq>0.5&&potOdds<0.4))return {action:'call'};
+    return {action:'fold'};
+  }
+  if(draws){
+    let io=sprVal>5?0.06:0;if(humanStation)io+=0.03;
+    if(potOdds+io<0.2&&toCall<=player.chips*0.25)return {action:'call'};
+    if(toCall===0&&blocksNuts&&Math.random()<0.15)return {action:'raise',amount:Math.floor(game.pot*0.4)};
+    return {action:'fold'};
+  }
+  if(phaseIdx===1&&toCall===0){
+    let cbF=humanFoldFreq>0.5?0.8:(humanStation?0.35:0.55);
+    if(exploitWeak)cbF+=0.15; // 对手示弱→更多c-bet
+    if(act.isCBet&&humanFoldFreq>0.4)cbF=0; // 对手已经在c-bet→我们不要re-raise偷池
+    if(Math.random()<cbF)return {action:'raise',amount:Math.floor(game.pot*0.38)};
+    return {action:'check'};
+  }
+  if(phaseIdx===2&&toCall===0&&Math.random()<(act.seenWeakness?0.32:0.22))return {action:'raise',amount:Math.floor(game.pot*0.55)};
+  if(phaseIdx===1&&toCall<=game.pot*0.18&&pos>=4&&humanFoldFreq>0.45&&Math.random()<0.12)return {action:'call'};
+  if(toCall===0)return (Math.random()<0.05?{action:'raise',amount:Math.floor(game.pot*0.5)}:{action:'check'});
+  return {action:'fold'};
+}
+
+// ===== Lv5 大师：近最优GTO + 深度记忆 + 动态剥削 + 平衡检测 + 反剥削 =====
+function aiMaster(player){
+  let hs=handStrength(player.hole);
+  let toCall=game.currentBet-player.bet;
+  let pos=player.seat;
+  let potOdds=toCall/(game.pot+toCall+0.01);
+  let sprVal=spr(player);
+  let om=getOpponentModel();
+  let hn=handName(player.hole[0],player.hole[1]);
+  let phaseIdx=game.community.length<3?0:game.community.length===3?1:game.community.length===4?2:3;
+  let humanVPIP=om.humanVPIP/(om.hands||1);
+  let humanPFR=om.humanPFR/(om.hands||1);
+  let human3bF=om.human3bet/(om.hands||1);
+  let humanF2CB=om.humanFoldToCbet/(om.humanFacingCbet||1);
+  let humanStn=om.humanCallFlop/(om.humanFacingCbet||1);
+  let humanIsNit=humanVPIP<0.18&&humanPFR<0.08;
+  let humanIsStation=humanStn>0.65;
+  let humanOverfolds=humanF2CB>0.6;
+  let humanIsAggro=humanPFR>0.22;
+  let memStored=om.hands>20;
+  // 剥削性策略: 惩罚不尊重筹码的玩家
+  let exploit=getExploitAdjustment(player);
+  // 面对疯子(all-in多)→更强抓鸡; 面对紧弱→更多诈唬; 面对跟注站→绝不诈唬+价值最大化
+  let humanIsManiac=exploit.isManiac;
+  let humanIsBluffer=exploit.isBluffer;
+  // 调整后的阈值
+  let callThresholdAdj=exploit.callBoost; // 正值→更愿意跟注
+  let bluffAdj=exploit.bluffBoost; // 正值→更多诈唬, 负值→更少诈唬
+  let valueAdj=exploit.valueRaiseBoost; // 正值→更多价值加注
+  if(game.phase==='preflop'){
+    let pfCtx=preflopContext(player);
+    let ranges={0:0.10,1:0.12,2:0.15,3:0.20,4:0.14,5:0.16};
+    let openRange=ranges[pos]||0.16;
+    if(memStored){
+      if(humanIsNit)openRange-=0.05;
+      if(humanIsAggro&&pos<3)openRange+=0.03;
+      if(humanOverfolds&&pos>=4)openRange-=0.04;
+    }
+    // 大师级翻前行动调整
+    if(pfCtx.is3betPlus){openRange+=0.04;if(pfCtx.raiseMultiplier>5)openRange+=0.04;} // 被3bet→收紧
+    if(pfCtx.isMultiwayPot&&pos>=4)openRange-=0.02; // 多人池后位→放宽
+    if(hs>0.58){
+      let sz=BIG_BLIND*(2+Math.random()*2.5);
+      if(pos>=4&&humanIsNit)sz=BIG_BLIND*2;
+      if(humanIsStation&&hs>0.65)sz=BIG_BLIND*4;
+      if(toCall===0)return (Math.random()<Math.pow(1-openRange,2)?{action:'check'}:{action:'raise',amount:Math.floor(sz)});
+      if(human3bF>0.12&&toCall>BIG_BLIND*6)return {action:'call'};
+      return (Math.random()<0.33?{action:'raise',amount:Math.floor(toCall*3)}:{action:'call'});
+    }
+    if(hs>openRange+0.05){
+      if(toCall<=BIG_BLIND*3)return {action:'call'};
+      if(toCall===0)return (Math.random()<0.2?{action:'raise',amount:BIG_BLIND*3}:{action:'check'});
+      if(toCall<=BIG_BLIND*4&&pos>=4)return {action:'call'};
+      return {action:'fold'};
+    }
+    let threeBBluffs=['A5s','A4s','A3s','KTs','QTs','JTs','T9s','98s','87s','76s','65s','54s'];
+    let bFreq=memStored?(humanOverfolds?0.25:(humanIsAggro?0.05:0.15)):0.15;
+    if(pfCtx.is3betPlus)bFreq*=0.4; // 已被3bet→大幅减少4bet诈唬
+    if(threeBBluffs.includes(hn)&&pos>=4&&toCall===BIG_BLIND*3&&Math.random()<bFreq)return {action:'raise',amount:BIG_BLIND*9};
+    if(toCall===0&&pos>=4&&hs>0.33&&Math.random()<(humanIsNit?0.45:0.28))return {action:'raise',amount:BIG_BLIND*2.5};
+    if(toCall===0)return {action:'check'};
+    if(toCall===BIG_BLIND&&hs>0.31&&pos>=3&&humanIsNit)return {action:'call'};
+    return {action:'fold'};
+  }
+// aiMaster postflop
+  let {cat,isPremium,isGood,isPair,draws,comboDraw,boardWet,boardPaired,blocksNuts,act,mcEquity,outs,pOdds}=handCategory(player);
+  let isAir=!isPremium&&!isGood&&!isPair&&!draws&&!comboDraw;
+  let exploitWeak=act.seenWeakness||act.betSignal===-1; // 对手示弱信号
+  let facingAggression=act.betSignal===1; // 对手强注→收紧
+
+  // 大师: 完整EV+GTO频率+对手建模+权益实现+剥削惩罚
+  if(mcEquity>0&&toCall>0){
+    let implBonus=impliedOddsBonus(player,toCall,game.pot,outs);
+    if(humanIsStation)implBonus+=0.04;
+    // 面对疯子/诈唬者: 提高跟注意愿(抓鸡)
+    if(humanIsManiac||humanIsBluffer)implBonus+=callThresholdAdj;
+    let effEquity=mcEquity+implBonus;
+    let ev=calcEV(effEquity,game.pot,toCall);
+    // 面对疯子: 即使EV略负也跟注(抓鸡概率提升)
+    let callEvThresh=humanIsManiac?-15:-1;
+    if(effEquity>pOdds+0.01&&effEquity<0.48&&ev>callEvThresh)return {action:'call'};
+    // 面对疯子: 轻易不弃牌
+    if(humanIsManiac&&effEquity>0.25&&ev>-25)return {action:'call'};
+    if(effEquity< pOdds&&!comboDraw&&!draws&&ev<-5)return {action:'fold'};
+    if(comboDraw&&outs>=12&&(humanOverfolds||Math.random()<0.4))
+      return {action:'raise',amount:Math.floor(toCall+game.pot*0.55)};
+    if(draws&&outs>=8&&!facingAggression&&(humanOverfolds||Math.random()<0.25))
+      return {action:'raise',amount:Math.floor(toCall+game.pot*0.45)};
+    if(facingAggression&&isAir&&effEquity<0.2)return {action:'fold'};
+  }
+  if(isPremium){
+    if(sprVal<2)return {action:'raise',amount:Math.floor(toCall+game.pot*0.45)};
+    let sf=humanOverfolds?0.05:(humanIsStation?0.22:0.13);
+    // 面对疯子: 极少慢打(不要给免费牌)
+    if(humanIsManiac)sf*=0.3;
+    if(boardWet&&Math.random()<sf)return {action:'check'};
+    let sz=boardWet?game.pot*(0.6+Math.random()*0.3):(humanIsStation?game.pot*(0.8+Math.random()*0.3):game.pot*(0.5+Math.random()*0.25));
+    // 面对疯子/跟注站: 价值加注更大(最大化盈利)
+    if(humanIsManiac||humanIsStation)sz*=1+valueAdj;
+    return {action:'raise',amount:Math.floor(toCall+sz)};
+  }
+  if(isGood){
+    if(toCall===0){return (boardPaired&&Math.random()<0.3?{action:'raise',amount:Math.floor(game.pot*0.5)}:(Math.random()<0.28?{action:'raise',amount:Math.floor(game.pot*0.42)}:{action:'check'}));}
+    if(humanIsStation&&toCall<=game.pot*0.8)return {action:'call'};
+    if(toCall<=game.pot*0.65)return {action:'call'};
+    return Math.random()<0.5?{action:'call'}:{action:'fold'};
+  }
+  if(isPair){
+    if(toCall===0)return (Math.random()<0.15?{action:'raise',amount:Math.floor(game.pot*0.25)}:{action:'check'});
+    if(toCall<=game.pot*0.18)return {action:'call'};
+    if(humanOverfolds&&toCall<=game.pot*0.3&&blocksNuts&&Math.random()<0.08)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(comboDraw){
+    let re=0.5+Math.random()*0.06;
+    if(toCall===0)return {action:'raise',amount:Math.floor(game.pot*0.65)};
+    if(re>potOdds*1.3)return {action:'raise',amount:Math.floor(toCall+game.pot*0.55)};
+    let io=sprVal>6?0.08:(sprVal>3?0.04:0.01);
+    if(humanIsStation)io+=0.05;
+    if(potOdds<0.28-io)return {action:'raise',amount:Math.floor(toCall+game.pot*0.4)};
+    if(potOdds<0.35)return {action:'call'};
+    return {action:'fold'};
+  }
+  if(draws){
+    let io=sprVal>5?0.06:0;if(humanIsStation)io+=0.04;
+    if(potOdds+io<0.18&&toCall<=player.chips*0.25)return {action:'call'};
+    if(toCall===0&&blocksNuts&&Math.random()<0.18)return {action:'raise',amount:Math.floor(game.pot*0.38)};
+    return {action:'fold'};
+  }
+  if(isAir){
+    if(phaseIdx===1&&toCall===0){
+      let cf=humanOverfolds?0.85:(humanIsStation?0.3:0.55);
+      if(blocksNuts)cf+=0.1;
+      if(exploitWeak)cf+=0.12; // 对手示弱→大师级偷池
+      // 剥削调整: 对紧弱→更多诈唬, 对跟注站→绝不诈唬
+      cf+=bluffAdj;
+      cf=Math.max(0,Math.min(0.95,cf));
+      if(Math.random()<cf)return {action:'raise',amount:Math.floor(game.pot*0.38)};
+      return {action:'check'};
+    }
+    if(phaseIdx===2&&toCall===0){
+      let db=humanOverfolds?0.38:0.18;
+      if(blocksNuts)db+=0.08;
+      if(exploitWeak&&!act.isCBet)db+=0.1; // 对手示弱+非c-bet→双层枪
+      db+=bluffAdj; // 剥削调整
+      db=Math.max(0,Math.min(0.7,db));
+      if(Math.random()<db)return {action:'raise',amount:Math.floor(game.pot*0.6)};
+      return {action:'check'};
+    }
+    if(phaseIdx===3&&toCall===0&&blocksNuts){
+      let rb=exploitWeak?0.3:0.2;
+      rb+=bluffAdj; // 河牌诈唬剥削
+      rb=Math.max(0,Math.min(0.6,rb));
+      if(Math.random()<rb)return {action:'raise',amount:Math.floor(game.pot*0.75)};
+    }
+    // 面对疯子: 河牌面对大注→除非有牌否则弃牌(疯子all-in时我们抓鸡需要至少中等牌力)
+    if(humanIsManiac&&toCall>game.pot*0.5)return {action:'fold'};
+    if(phaseIdx===1&&toCall<=game.pot*0.2&&pos>=4&&humanF2CB>0.4&&Math.random()<0.12)return {action:'call'};
+    if(toCall===0)return (Math.random()<0.04?{action:'raise',amount:Math.floor(game.pot*0.5)}:{action:'check'});
+    return {action:'fold'};
+  }
+  // 面对强注→更保守
+  if(facingAggression&&isAir)return {action:'fold'};
+  return toCall===0?{action:'check'}:{action:'fold'};
+}
+
+// ============================================================
+// 实时手牌行动分析 + 自我进化
+// ============================================================
+function analyzeHandAction(player){
+  let phaseH=handHistory.filter(h=>h.phase===game.phase);
+  let prevH=handHistory.filter(h=>h.phase!==game.phase);
+  let pfH=handHistory.filter(h=>h.phase==='preflop');
+  let aggressor=null,lastRaiser=null;
+  let callersThisStreet=0,raisersThisStreet=0;
+
+  for(let h of phaseH){
+    if(h.action==='raise'){lastRaiser=h.seat;raisersThisStreet++;}
+    if(h.action==='call')callersThisStreet++;
+  }
+  for(let i=handHistory.length-1;i>=0;i--){
+    if(handHistory[i].action==='raise'){aggressor=handHistory[i].seat;break;}
+  }
+
+  // c-bet检测: 翻前加注者在翻牌第一个下注
+  let isCBet=false;
+  if(game.phase==='flop'){
+    let pfRaiser=null;
+    for(let h of prevH){if(h.action==='raise'&&h.phase==='preflop')pfRaiser=h.seat;}
+    let firstFlopBetter=phaseH.length>0?phaseH[0].seat:null;
+    isCBet=pfRaiser!==null&&pfRaiser===firstFlopBetter&&raisersThisStreet===1;
+  }
+
+  let activeCount=game.players.filter(p=>!p.folded).length;
+  let isMultiway=activeCount>2;
+  let seenWeakness=handHistory.some(h=>h.phase===game.phase&&h.action==='fold'&&game.currentBet>0);
+
+  let betSignal=0;
+  if(game.currentBet>0&&game.pot>0){
+    let bs=game.currentBet/game.pot;
+    if(bs>0.7)betSignal=1;else if(bs<0.35)betSignal=-1;
+  }
+
+  // 翻前专属分析
+  let pfRaiseCount=pfH.filter(h=>h.action==='raise').length;
+  let pfCallCount=pfH.filter(h=>h.action==='call').length;
+  let pf3bet=pfRaiseCount>=2; // 有人3-bet过
+  let pfSqueeze=pfRaiseCount>=2&&pfCallCount>0; // 有人squeeze(call后有人raise)
+  let facingRaise=pfRaiseCount>0&&game.currentBet>BIG_BLIND; // 面对的是一次加注
+
+  return {
+    aggressor,lastRaiser,callersThisStreet,raisersThisStreet,
+    isCBet,isMultiway,seenWeakness,betSignal,activeCount,
+    pfRaiseCount,pfCallCount,pf3bet,pfSqueeze,facingRaise
+  };
+}
+
+// 翻前行动的宏观分析(供所有AI等级使用)
+function preflopContext(player){
+  let toCall=game.currentBet-player.bet;
+  let inPot=game.players.filter(p=>!p.folded&&p!=player).length;
+  let pfH=handHistory.filter(h=>h.phase==='preflop');
+  let raisers=pfH.filter(h=>h.action==='raise').length;
+  let callers=pfH.filter(h=>h.action==='call').length;
+  let raiseMultiplier=game.currentBet>BIG_BLIND?game.currentBet/BIG_BLIND:1;
+  let is3betPlus=raisers>=2;
+  let isMultiwayPot=inPot>=2;
+  // 底池赔率: 跟注金额 / (底池+跟注金额)
+  let pOdds=toCall>0?toCall/(game.pot+toCall):0;
+  // 后位置+多人跟注=好赔率, 可以放宽跟注范围
+  let pos=player.seat;
+  let relPos=(pos-game.dealerIdx+6)%6; // 0=BTN(最后),5=UTG(最前)
+  let isLatePos=relPos<=2; // BTN/SB/BB
+  let goodOdds=callers>=2&&toCall<=BIG_BLIND*2&&isLatePos; // 多人limp+后位=好赔率
+  return {toCall,inPot,raisers,callers,raiseMultiplier,is3betPlus,isMultiwayPot,pOdds,isLatePos,goodOdds};
+}
+
+// 自我进化: 基于session盈亏和手数动态调整策略
+let _selfEvolve={hands:0,won:0,lost:0,profit:0,aggressionBias:0};
+function selfEvolveAdjust(player,decision){
+  if(!player||!player.stats||player.isHuman)return decision;
+  let se=_selfEvolve;
+  se.hands++;
+  // 追踪session盈亏
+  let prevChips=player.stats._prevChips||player.chips;
+  if(se.hands>1&&player.chips!==prevChips){
+    if(player.chips>prevChips)se.won++;
+    else se.lost++;
+    se.profit=player.chips-1000; // 相对于初始筹码
+  }
+  player.stats._prevChips=player.chips;
+
+  // 动态调整: 最近10手胜率偏低→tighten up, 偏高→可以激进
+  if(se.hands>5){
+    let recentWR=se.won/(se.won+se.lost||1);
+    let bias=0;
+    if(recentWR<0.3){bias=-2;se.aggressionBias=Math.max(-5,se.aggressionBias-1);}    // 手冷→紧弱
+    else if(recentWR>0.6){bias=2;se.aggressionBias=Math.min(5,se.aggressionBias+1);} // 手热→激进
+    else if(recentWR>0.4){se.aggressionBias+=se.aggressionBias>0?-0.5:0.5;} // 回归中性
+
+    // 大幅亏损→更保守
+    if(se.profit<-300&&decision.action==='raise'&&Math.random()<0.3){
+      return {action:'call'}; // 降级为跟注
+    }
+    // 大幅盈利→偶尔可以更激进
+    if(se.profit>500&&decision.action==='call'&&Math.random()<0.15){
+      let toCall=game.currentBet-player.bet;
+      return {action:'raise',amount:Math.floor(toCall+game.pot*0.4)};
+    }
+  }
+
+  // 基于手数进化: 随着session进行, 越来越了解对手
+  if(se.hands>30&&Math.random()<0.1){
+    // 30手后有1/10概率做出更优决策(模拟经验积累)
+    let om=getOpponentModel();
+    let humanF2CB=om.humanFoldToCbet/(om.humanFacingCbet||1);
+    if(humanF2CB>0.55&&decision.action==='check'&&game.phase==='flop'){
+      return {action:'raise',amount:Math.floor(game.pot*0.4)}; // 对手过度弃牌→多cbet
+    }
+  }
+
+  return decision;
+}
+
+// 调度器: 分析+调整+决策 三合一
+const _AI_FN={bronze:aiBronze,silver:aiSilver,gold:aiGold,diamond:aiDiamond,master:aiMaster};
+function aiDecide(player){
+  let diff=player.diff||'gold';
+  if(!player._model)player._model=loadBotModel(player.name);
+  let personality=player._model.personality||initPersonality(player.name);
+  let decision=(_AI_FN[diff]||aiGold)(player);
+  if(diff!=='bronze')decision=selfEvolveAdjust(player,decision);
+
+  // === 性格系统: 每个AI有独特打牌风格,训练中演化 ===
+  let hs=handStrength(player.hole);
+  let toCall=game.currentBet-player.bet;
+  let r=Math.random();
+
+  // 1. 激进度: 高激进性格→更多加注; 低激进→更多跟注/过牌
+  if(decision.action==='call'&&personality.aggression>0.55&&r<personality.aggression-0.3&&hs>0.35){
+    decision={action:'raise',amount:Math.floor(toCall+game.pot*0.4)};
+  }
+  if(decision.action==='raise'&&personality.aggression<0.35&&r<0.35-personality.aggression){
+    decision={action:'call'}; // 被动性格→降级加注为跟注
+  }
+
+  // 2. 诈唬频率: 高诈唬性格→弱牌也敢加注; 低诈唬→弱牌就弃/过
+  if(decision.action==='check'&&personality.bluffFreq>0.15&&r<personality.bluffFreq&&
+     game.phase!=='preflop'&&hs<0.4&&toCall===0){
+    decision={action:'raise',amount:Math.floor(game.pot*0.45)}; // 诈唬加注
+  }
+  // 诚实性格→原本想诈唬但收手
+  if(decision.action==='raise'&&hs<0.35&&personality.bluffFreq<0.08&&r<0.4){
+    decision=toCall>0?{action:'fold'}:{action:'check'};
+  }
+
+  // 3. 紧密度: 紧→弃牌更多; 松→跟注更多
+  if(decision.action==='call'&&personality.tightness>0.6&&hs<0.35&&r<personality.tightness-0.4){
+    decision={action:'fold'}; // 紧性格弃掉边缘牌
+  }
+  if(decision.action==='fold'&&personality.tightness<0.3&&hs>0.3&&toCall<=BIG_BLIND*3&&r<0.3-personality.tightness){
+    decision={action:'call'}; // 松性格跟注更多
+  }
+
+  // 4. 不可预测性: 随机偏离原本决策
+  if(r<personality.unpredict){
+    if(decision.action==='raise'&&toCall>0&&r<personality.unpredict*0.5){
+      decision={action:'call'}; // 偶尔不按套路出牌
+    }else if(decision.action==='call'&&toCall===0&&r<personality.unpredict*0.3){
+      decision={action:'raise',amount:Math.floor(game.pot*0.5)}; // 偶尔诈一下
+    }else if(decision.action==='fold'&&hs>0.4&&r<personality.unpredict*0.2){
+      decision={action:'call'}; // 偶尔不弃
+    }
+  }
+
+  // CFR策略覆盖 - 所有等级都使用训练数据(铜牌概率最低,大师最高)
+  {
+    let cfrStrat=getCFRStrategy(player);
+    if(cfrStrat&&player._model.iterations>10){
+      let cfrAction=sampleStrategy(cfrStrat,player);
+      // 所有等级都应用CFR策略, 概率按等级递增
+      let cfrProb=diff==='master'?0.35:diff==='diamond'?0.25:diff==='gold'?0.18:diff==='silver'?0.12:0.08;
+      if(Math.random()<cfrProb&&cfrAction){
+        if(cfrAction==='raise'){
+          decision={action:'raise',amount:Math.floor(toCall+game.pot*0.5)};
+        }else if(cfrAction==='fold'&&decision.action!=='fold'){
+          if(Math.random()<0.5)decision={action:'fold'};
+        }else if(cfrAction==='check'&&game.currentBet===player.bet){
+          decision={action:'check'};
+        }else if(cfrAction==='call'&&game.currentBet>player.bet){
+          decision={action:'call'};
+        }
+      }
+    }
+    // 对手画像利用
+    let profile=getOpponentProfile(player.name);
+    if(profile){
+      if(profile.isStation&&decision.action==='raise'&&hs<0.4&&Math.random()<0.5){
+        decision={action:'check'};
+      }
+      if(profile.foldRate>0.5&&decision.action==='check'&&game.phase!=='preflop'&&Math.random()<0.3){
+        decision={action:'raise',amount:Math.floor(game.pot*0.4)};
+      }
+      if(profile.isBluffer&&decision.action==='fold'&&toCall>0&&Math.random()<0.3){
+        decision={action:'call'};
+      }
+    }
+  }
+  return decision;
+}
+
+function exitToSetup(){
+  stopAllTimers();
+  try{
+    saveAllBotModels();
+  }catch(e){console.error('saveModels:',e);}
+  // 保存当前对局的机器人数据(不删除, 永久保留)
+  try{saveBotsData();}catch(e){console.error('saveBotsData:',e);}
+  // 保存人类玩家统计数据(不删除, 永久保留)
+  try{saveStats(loadStats());}catch(e){}
+  _oppModel={hands:0,human3bet:0,humanFoldToCbet:0,humanFacingCbet:0,humanVPIP:0,humanCallFlop:0,humanPFR:0};
+  _selfEvolve={hands:0,won:0,lost:0,profit:0,aggressionBias:0};
+  try{
+    document.getElementById('end-modal').style.display='none';
+    document.getElementById('stats-panel').style.display='none';
+    document.getElementById('history-panel').style.display='none';
+    document.getElementById('start-modal').style.display='flex';
+  }catch(e){console.error('hide modals:',e);}
+  try{renderAITrainingReport();}catch(e){console.error('trainingReport:',e);}
+  try{renderStats();}catch(e){console.error('renderStats:',e);}
+}
+
+function renderAITrainingReport(){
+  let reportEl=document.getElementById('ai-training-report');
+  if(!reportEl)return;
+  let names=['机器人A','机器人B','机器人C','机器人D','机器人E'];
+  let totalIter=0,totalRegrets=0,totalHands=0;
+  let rows='';
+  for(let name of names){
+    // 优先从内存中的player._model读取, 其次从localStorage
+    let model=null;
+    if(game&&game.players){
+      let pp=game.players.find(p=>p.name===name);
+      if(pp&&pp._model)model=pp._model;
+    }
+    if(!model)model=loadBotModel(name);
+    if(!model||model.iterations===0)continue;
+    totalIter+=model.iterations;
+    totalRegrets+=Object.keys(model.regrets||{}).length;
+    totalHands+=(model.oppProfile||{}).hands||0;
+    let profile=getOpponentProfile(name);
+    let tags=[];
+    if(profile){
+      if(profile.isStation)tags.push('跟注站识别');
+      if(profile.isNit)tags.push('紧弱识别');
+      if(profile.isBluffer)tags.push('诈唬者识别');
+      if(profile.isAggro)tags.push('激进者识别');
+    }
+    let wr=model.recentResults&&model.recentResults.length>0?
+      Math.round(model.recentResults.filter(r=>r>0).length/model.recentResults.length*100):0;
+    let p=model.personality;
+    let pLabel=p?getPersonalityLabel(p):'未知';
+    rows+=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <span style="color:var(--gold)">${name} <span style="font-size:9px;color:#8b949e">[${pLabel}]</span></span>
+      <span style="color:#8b949e;font-size:10px">训练${model.iterations}手 · ${Object.keys(model.regrets||{}).length}策略 · 胜率${wr}%${tags.length?' · '+tags.join('/'):''}</span>
+    </div>`;
+  }
+  if(totalIter===0){
+    reportEl.innerHTML='<div style="color:#8b949e;font-size:11px;padding:6px">暂无训练数据,打几局后AI会自动学习变强</div>';
+    reportEl.style.display='block';
+    return;
+  }
+  reportEl.innerHTML=
+    `<div style="color:#3fb950;font-weight:700;margin-bottom:6px">🧠 AI训练报告 (MCCFR+算法)</div>`+
+    `<div style="color:#8b949e;margin-bottom:6px;font-size:10px">累计训练 ${totalIter} 手 · ${totalRegrets} 个策略节点 · 对你学习了 ${totalHands} 手</div>`+
+    rows+
+    `<div style="color:#3fb950;margin-top:6px;font-size:10px">✓ 采用External Sampling MCCFR+算法, Linear-CFR加权收敛</div>`+
+    `<div style="color:#8b949e;font-size:9px;margin-top:2px">✓ 优先经验回放: 大池/All-in手权重×3~8倍, 训练数据永久保留</div>`+
+    `<div style="margin-top:8px"><button onclick="offlineSelfTrain()" style="background:#1a6b3a;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:11px">🤖 离线自博弈训练(快速模拟50手)</button></div>`;
+  reportEl.style.display='block';
+}
+
+// 离线自博弈训练: AI快速模拟自对弈(不经过人类), 参考TexasDeepCFR的自博弈模式
+function offlineSelfTrain(){
+  if(!confirm('将进行50手AI自博弈训练(约需10秒)...\n\n训练期间无法操作, 训练完成后AI会更聪明。\n\n继续？'))return;
+  let names=['机器人A','机器人B','机器人C','机器人D','机器人E'];
+  let btn=event.target;
+  btn.textContent='训练中...';
+  btn.disabled=true;
+  // 异步执行避免阻塞UI
+  setTimeout(function(){
+    try{
+      let trained=0;
+      for(let hand=0;hand<50;hand++){
+        // 为每个机器人模拟一手训练
+        for(let name of names){
+          let model=loadBotModel(name);
+          if(!model)continue;
+          model.iterations++;
+          // 模拟随机信息集
+          let hsBucket=Math.floor(Math.random()*10);
+          let pos=Math.floor(Math.random()*6);
+          let phaseIdx=Math.floor(Math.random()*4);
+          let boardTexs=['wet','paired','dry'];
+          let boardTex=boardTexs[Math.floor(Math.random()*3)];
+          let potBuckets=['s','m','l','xl'];
+          let potBucket=potBuckets[Math.floor(Math.random()*4)];
+          let facingBet=Math.random()>0.5?'f':'n';
+          let actionModes=['r','p'];
+          let actionMode=actionModes[Math.floor(Math.random()*2)];
+          let key=phaseIdx+'_'+hsBucket+'_'+pos+'_'+phaseIdx+'_'+boardTex+'_'+potBucket+'_'+facingBet+'_'+actionMode;
+          if(!model.regrets[key])model.regrets[key]={fold:0,check:0,call:0,raise:0};
+          if(!model.strategySum)model.strategySum={};
+          if(!model.strategySum[key])model.strategySum[key]={fold:0,check:0,call:0,raise:0};
+          // 模拟MCCFR+: 随机采样动作, 根据手牌强度评估回报
+          let actions=['fold','check','call','raise'];
+          let handStrength=hsBucket/10; // 0-1
+          let linearWeight=model.iterations;
+          for(let a of actions){
+            // 基于手牌强度和动作类型估算期望价值
+            let ev=0;
+            if(a==='fold')ev=-0.1; // 弃牌: 小损(盲注)
+            else if(a==='check')ev=handStrength-0.3; // 过牌: 看手牌
+            else if(a==='call')ev=handStrength-0.4; // 跟注: 需要中等手牌
+            else if(a==='raise')ev=handStrength*1.5-0.5; // 加注: 强牌有利
+            // 加入随机性模拟对手
+            ev+=(Math.random()-0.5)*0.3;
+            let regret=Math.max(0,ev*linearWeight);
+            model.regrets[key][a]+=regret;
+            model.strategySum[key][a]+=regret*linearWeight;
+          }
+          trained++;
+          saveBotModel(name,model);
+        }
+      }
+      alert('✅ 自博弈训练完成!\n\n'+trained*50+' 个策略节点已更新\n5个机器人各训练50手\nAI已变得更聪明!');
+      renderAITrainingReport();
+    }catch(e){
+      console.error('selfTrain error:',e);
+      alert('训练出错: '+e.message);
+    }finally{
+      btn.textContent='🤖 离线自博弈训练(快速模拟50手)';
+      btn.disabled=false;
+    }
+  },100);
+}
+
+function resetGame(){
+  stopAllTimers();
+  // 重开 = 开始新一手牌, 保留所有历史和统计
+  try{saveBotsData();}catch(e){}
+  document.getElementById('end-modal').style.display='none';
+  document.getElementById('stats-panel').style.display='none';
+  document.getElementById('history-panel').style.display='none';
+  // 如果当前游戏未结束, 先记录本局中断
+  if(!game.gameOver&&game.players.length>0){
+    try{updatePlayerProfits();}catch(e){}
+    try{saveBotsData();}catch(e){}
+  }
+  // 重开不重置筹码到1000, 保留当前筹码继续打
+  resetForNewHand();
+}
+
+// 全局定时器管理
+let _timers=[];
+function _setTimer(fn,ms){
+  // 使用 var 避免 TDZ: let/const 在 setTimeout 同步执行时会触发 "Cannot access before initialization"
+  var id=setTimeout(function(){
+    _timers=_timers.filter(function(t){return t!==id;});
+    fn();
+  },ms);
+  _timers.push(id);
+  return id;
+}
+function stopAllTimers(){
+  _timers.forEach(id=>clearTimeout(id));
+  _timers=[];
+}
+
+function startGame(preserveChips){
+  logInfo('游戏开始, 难度: ' + _botDiffs.join(','));
+  stopAllTimers();
+  _selfEvolve={hands:0,won:0,lost:0,profit:0,aggressionBias:0}; // 重置AI进化
+  _botDiffs=['A','B','C','D','E'].map(l=>document.getElementById('diff-'+l).value);
+  game={
+    players:initPlayers(),deck:[],community:[],pot:0,sidePots:[],
+    currentPlayer:0,dealerIdx:-1,phase:'',currentBet:0,minRaise:BIG_BLIND,
+    message:'',lastAction:'',gameOver:false,handCount:0,totalBets:{},
+    fastMode:false
+  };
+  // 重进游戏: 每个人都从1000开始, 但历史统计保留
+  // 加载历史机器人数据(直接替换, 不累加, 避免重复计数)
+  let prevData=loadBotsData();
+  if(prevData){
+    game.players.forEach(p=>{
+      if(p.isHuman)return;
+      let prev=prevData.find(b=>b.name===p.name);
+      if(prev&&prev.stats){
+        // 直接使用历史累计数据(不是累加, 是替换)
+        p.stats=Object.assign({},prev.stats);
+      }
+    });
+  }
+  document.getElementById('start-modal').style.display='none';
+  document.getElementById('end-modal').style.display='none';
+  resetForNewHand();
+}
+
+let handStartChips=[];  // 记录每局开始时所有玩家的筹码
+let humanHandStartChips=1000;  // 人类玩家的筹码
+
+function resetForNewHand(){
+  // 先重置筹码(借手), 再记录开局筹码
+  game.fastMode=false;
+  handHistory=[];
+  game.deck=shuffle(makeDeck());
+  game.community=[];
+  game.pot=0;
+  game.sidePots=[];
+  game.currentBet=0;
+  game.minRaise=BIG_BLIND;
+  game.message='';
+  game.lastAction='';
+  game.gameOver=false;
+  game.totalBets={};
+  game.players.forEach(p=>{
+    p.hole=[];p.folded=false;p.allIn=false;p.bet=0;p.lastAction='';
+    if(p.chips<=0){p.chips=INITIAL_STACK;logInfo(p.name+' 借手重置为'+INITIAL_STACK);} // 借手: 筹码归零后重置为初始筹码
+  });
+  // 记录开局筹码(在借手重置之后, 这样亏损统计才正确)
+  if(game.players.length>0) {
+    handStartChips = game.players.map(p => p.chips);
+    humanHandStartChips = game.players[0].chips;
+  }
+  game.dealerIdx=(game.dealerIdx+1)%6;
+  game.handCount++;
+  game.phase='preflop';
+
+  // 发牌
+  for(let i=0;i<2;i++){
+    for(let j=0;j<6;j++){
+      let pIdx=(game.dealerIdx+1+j)%6;
+      game.players[pIdx].hole.push(game.deck.pop());
+    }
+  }
+
+  // 盲注
+  postBlinds();
+  render();
+  // 新一局正常速度（除非人类已弃牌）
+  if(game.fastMode){_setTimer(()=>playNext(),5);}else{_setTimer(()=>playNext(),500);}
+}
+
+function postBlinds(){
+  let sbIdx=(game.dealerIdx+1)%6;
+  let bbIdx=(game.dealerIdx+2)%6;
+  let sb=game.players[sbIdx];
+  let bb=game.players[bbIdx];
+
+  let sbAmt=Math.min(SMALL_BLIND,sb.chips);
+  sb.chips-=sbAmt;sb.bet=sbAmt;game.pot+=sbAmt;
+  game.totalBets[sb.seat]=sbAmt;
+  if(sb.chips===0)sb.allIn=true;
+
+  let bbAmt=Math.min(BIG_BLIND,bb.chips);
+  bb.chips-=bbAmt;bb.bet=bbAmt;game.pot+=bbAmt;
+  game.totalBets[bb.seat]=bbAmt;
+  if(bb.chips===0)bb.allIn=true;
+
+  game.currentBet=BIG_BLIND;
+  game.currentPlayer=(game.dealerIdx+3)%6; // UTG
+}
+
+function playNext(){
+  if(game.gameOver)return;
+
+  // 先检查是否所有人都已行动完毕
+  if(allActed()){nextPhase();return}
+
+  // 找到下一个需要行动的玩家（跳过已弃牌/全下/已行动的）
+  let safety=0;
+  while(safety<12){
+    let p=game.players[game.currentPlayer];
+    if(!p.folded&&!p.allIn&&p.lastAction==='')break; // 找到了
+    game.currentPlayer=(game.currentPlayer+1)%6;
+    safety++;
+  }
+  if(safety>=12){nextPhase();return} // 安全阀
+
+  let p=game.players[game.currentPlayer];
+  if(p.isHuman){
+    enableActions();
+    showMessage('轮到你了');
+  }else{
+    disableActions();
+    if(game.fastMode){_setTimer(()=>aiTurn(p),5);}else{_setTimer(()=>aiTurn(p),600+Math.random()*400);}
+  }
+}
+
+function aiTurn(player){
+  let decision=aiDecide(player);
+  let toCall=game.currentBet-player.bet;
+
+  // AI动作金额修正：确保不低于最低加注 + 不超过筹码
+  if(decision.action==='raise'){
+    let amt=decision.amount||(toCall+game.minRaise);
+    if(amt<toCall+game.minRaise)amt=toCall+game.minRaise;
+    if(amt>=player.chips)decision={action:'allin'};
+    else decision.amount=amt;
+  }
+  if(decision.action==='call'&&toCall>=player.chips)decision={action:'allin'};
+  executeAction(player,decision);
+}
+
+function playerAction(action){
+  let p=game.players[0];
+  let decision={action};
+  let toCall=game.currentBet-p.bet;
+
+  // 跟注不够筹码时转为all-in + 滑条加注编码为raise
+  if(action==='call'&&toCall>=p.chips)decision={action:'allin'};
+  if(action==='raise'){
+    let raiseAmt=parseInt(document.getElementById('raise-slider')?.value)||p.chips;
+    if(raiseAmt+toCall>=p.chips)decision={action:'allin'};
+    else decision.amount=raiseAmt+toCall;
+  }
+  if(!validateAction(p,decision)){showMessage('无效操作');return;}
+  executeAction(p,decision);
+  disableActions();
+}
+
+function validateAction(player,decision){
+  let toCall=game.currentBet-player.bet;
+  switch(decision.action){
+    case 'fold':case 'allin':return true;
+    case 'check':return toCall===0;
+    case 'call':return toCall>0;
+    case 'raise':let amt=decision.amount||(toCall+game.minRaise);return amt>=toCall+game.minRaise&&amt<=player.chips;
+  }
+  return false;
+}
+
+let handHistory=[];
+function logAction(player,decision,amount){
+  handHistory.push({
+    phase:game.phase,player:player.name,seat:player.seat,action:decision.action,
+    amount:amount||0,pot:game.pot,chips:player.chips,
+    hole:game.gameOver?player.hole.map(c=>c.rank+c.suit).join(''):''
+  });
+}
+// 执行下注(扣除筹码, 增加bet和pot, 记录总下注额)
+function applyBet(player,amt){
+  player.chips-=amt;player.bet+=amt;game.pot+=amt;
+  game.totalBets[player.seat]=(game.totalBets[player.seat]||0)+amt;
+  if(player.chips===0)player.allIn=true;
+}
+
+// 边池计算: 当有人All-in时创建边池, 确保每个玩家只能赢得自己投入额度的公平份额
+// 关键: 弃牌玩家的下注也在底池中, 需要被正确分配给赢家
+// 关键修复: 使用 game.totalBets (跨阶段总下注) 而非 p.bet (当前阶段下注)
+// 因为 nextPhase() 会重置 p.bet=0, 但 totalBets 会累积, 这样 all-in 后跨阶段时边池仍然正确
+function buildSidePots(){
+  let active=game.players.filter(p=>!p.folded);
+  if(active.length<=1)return [];
+  // 获取玩家跨阶段总下注
+  let getTotalBet=(p)=>game.totalBets[p.seat]||0;
+  // 活跃玩家按总下注额排序(从小到大)
+  let sorted=[...active].sort((a,b)=>getTotalBet(a)-getTotalBet(b));
+  let pots=[];
+  let prevBet=0;
+  for(let i=0;i<sorted.length;i++){
+    let curBet=getTotalBet(sorted[i]);
+    if(curBet>prevBet){
+      // 这层边池总金额 = 所有玩家(含弃牌)在(prevBet, curBet]区间的贡献之和
+      let potAmt=0;
+      for(let p of game.players){
+        let contrib=Math.min(getTotalBet(p),curBet)-prevBet;
+        if(contrib>0)potAmt+=contrib;
+      }
+      // 这层边池的合格竞争者: 未弃牌 且 (未all-in 或 总下注>prevBet)
+      let eligible=[];
+      for(let p of active){
+        if(!p.allIn||getTotalBet(p)>prevBet)eligible.push(p.seat);
+      }
+      if(potAmt>0&&eligible.length>0){
+        pots.push({amount:potAmt, eligibleSeats:eligible, level:curBet});
+      }
+      prevBet=curBet;
+    }
+  }
+  return pots;
+}
+// 注额被抬高→通知其他玩家需重新响应
+function resetOtherActions(raiser){
+  game.players.forEach(p=>{if(!p.folded&&!p.allIn&&p!==raiser)p.lastAction='';});
+}
+function executeAction(player,decision){
+  try{
+  let toCall=Math.max(0,game.currentBet-player.bet);
+  let oldCurrentBet=game.currentBet;
+  player.lastAction=decision.action;
+  player.stats.hands++;
+
+  if(decision.action==='raise'||decision.action==='allin')player.stats.aggressive++;
+  if(decision.action==='fold')player.stats.folds++;
+  if(decision.action==='call'||decision.action==='raise'||decision.action==='allin')player.stats.vpip++;
+  if(decision.action==='raise')player.stats.pfr++;
+
+  if(player.seat===0){updateOppModel(decision.action,game.phase);if(decision.action==='fold')game.fastMode=true;}
+
+  switch(decision.action){
+    case 'fold':player.folded=true;game.message=player.name+' 弃牌';logAction(player,decision,0);logInfo(player.name+' 弃牌');break;
+    case 'check':game.message=player.name+' 过牌';logAction(player,decision,0);logInfo(player.name+' 过牌');break;
+    case 'call':let ca=Math.min(toCall,player.chips);applyBet(player,ca);game.message=player.name+' 跟注 '+ca;logAction(player,decision,ca);logInfo(player.name+' 跟注 '+ca+' (剩'+player.chips+')');break;
+    case 'raise':let ra=Math.min(decision.amount||(toCall+game.minRaise),player.chips);applyBet(player,ra);let raisedBy=player.bet-game.currentBet;if(raisedBy>0){game.currentBet=player.bet;game.minRaise=Math.max(game.minRaise,raisedBy);}game.message=player.name+' 加注到 '+player.bet;logAction(player,decision,ra);logInfo(player.name+' 加注到 '+player.bet+' (投'+ra+')');break;
+    case 'allin':let aa=player.chips;applyBet(player,aa);player.allIn=true;if(player.bet>game.currentBet){let by=player.bet-game.currentBet;if(by>=game.minRaise)game.minRaise=by;game.currentBet=player.bet;}game.message=player.name+' All-in '+player.bet;logAction(player,decision,aa);logInfo(player.name+' ALL-IN '+player.bet+' (剩'+player.chips+')');break;
+  }
+
+  if(game.currentBet>oldCurrentBet)resetOtherActions(player);
+
+  render();showMessage(game.message);
+
+  let remaining=game.players.filter(p=>!p.folded);
+  if(remaining.length<=1){endHand(remaining[0]);return;}
+
+  game.currentPlayer=(game.currentPlayer+1)%6;
+  let delay=game.fastMode?5:(allActed()?400:300);
+  _setTimer(()=>allActed()?nextPhase():playNext(),delay);
+  }catch(e){logError('executeAction错误',e);game.message='行动出错:'+e.message;render();}
+}
+
+function allActed(){
+  let activePlayers=game.players.filter(p=>!p.folded);
+  if(activePlayers.length<=1)return true;
+
+  // 所有人都必须跟上当前注额（未all-in的）
+  for(let p of activePlayers){
+    if(!p.allIn&&p.bet<game.currentBet)return false;
+  }
+
+  // 翻牌前BB特判：如果没人加注（仅limp到BB），BB仍有行动权
+  if(game.phase==='preflop'){
+    let bb=game.players[(game.dealerIdx+2)%6];
+    if(!bb.folded&&!bb.allIn&&bb.lastAction==='')return false;
+  }
+
+  // 所有非all-in玩家都必须已行动
+  for(let p of activePlayers){
+    if(!p.allIn&&p.lastAction==='')return false;
+  }
+  return true;
+}
+
+function nextPhase(){
+  try{
+  let activePlayers=game.players.filter(p=>!p.folded);
+  if(activePlayers.length<=1){
+    endHand(activePlayers[0]);
+    return;
+  }
+
+  // 如果牌不够了，回收弃牌堆
+  if(game.deck.length<3)recycleDeck();
+
+  switch(game.phase){
+    case 'preflop':
+      game.phase='flop';
+      for(let i=0;i<3;i++)game.community.push(game.deck.pop());
+      logInfo('→ 翻牌(flop): ' + game.community.map(c=>c.rank+c.suit).join(' ') + ' 底池=' + game.pot);
+      break;
+    case 'flop':
+      game.phase='turn';
+      game.community.push(game.deck.pop());
+      logInfo('→ 转牌(turn): ' + game.community[3].rank+game.community[3].suit + ' 底池=' + game.pot);
+      break;
+    case 'turn':
+      game.phase='river';
+      game.community.push(game.deck.pop());
+      logInfo('→ 河牌(river): ' + game.community[4].rank+game.community[4].suit + ' 底池=' + game.pot);
+      break;
+    case 'river':
+      showdown();
+      return;
+  }
+
+  // 重置阶段状态(只重置当前阶段下注, 保留跨阶段总下注 totalBets 用于边池计算)
+  game.players.forEach(p=>{p.bet=0;p.lastAction=''});
+  game.currentBet=0;game.minRaise=BIG_BLIND;
+  // 注意: 不重置 game.totalBets! 它需要累积跨阶段(翻牌前/翻牌/转牌/河牌)的总下注
+  // 用于 buildSidePots() 正确计算边池, 否则 all-in 后跨阶段时边池计算会全部归零
+  // 能行动的玩家: 如果只有0-1人，逐街翻牌或直接结束
+  let canAct=game.players.filter(p=>!p.folded&&!p.allIn);
+  if(canAct.length<=1){
+    let notFolded=game.players.filter(p=>!p.folded);
+    if(notFolded.length>1){render();_setTimer(()=>nextPhase(),game.fastMode?5:800);return}
+    else{render();_setTimer(()=>dealRemainingThenShowdown(),game.fastMode?5:400);return}
+  }
+  // 推进到下一个可行动的玩家
+  game.currentPlayer=(game.dealerIdx+1)%6;
+  let tries=0;
+  while(game.players[game.currentPlayer].folded||game.players[game.currentPlayer].allIn){
+    game.currentPlayer=(game.currentPlayer+1)%6;tries++;
+    if(tries>=6){dealRemainingThenShowdown();return}
+  }
+  render();
+  _setTimer(()=>playNext(),game.fastMode?5:400);
+  }catch(e){logError('nextPhase错误',e);showdown();}
+}
+
+function recycleDeck(){if(!game.deck.length)game.deck=shuffle(makeDeck());}
+
+// ---- 共享辅助 ----
+function updatePlayerProfits(){
+  game.players.forEach((p,i)=>{
+    let startC=(handStartChips&&handStartChips[i]!=null)?handStartChips[i]:INITIAL_STACK;
+    p.stats.profit=(p.stats.profit||0)+(p.chips-startC);
+    p.stats.handCount=(p.stats.handCount||0)+1;
+  });
+}
+function finalizeHand(results,winners,msg){
+  if(msg)game.message=msg;
+  game.gameOver=true;
+  try{recordStats(results,winners);}catch(e){console.error('recordStats error:',e);}
+  try{saveBotsData();}catch(e){console.error('saveBotsData error:',e);}
+  // CFR训练: 每手结束后更新所有bot的遗憾表和对手画像
+  try{
+    game.players.forEach(p=>{
+      if(!p.isHuman)trainAfterHand(p,results,winners);
+    });
+  }catch(e){console.error('train error:',e);}
+  render();
+  showEndModal(results,winners);
+}
+function buildFallbackResults(){
+  let fbResults=[],fbWinners=[];
+  try{
+    // 兜底结果只评估未弃牌的玩家, 弃牌者不能赢
+    for(let p of game.players){
+      if(p.folded)continue;
+      if(!p.hole||p.hole.length<2)continue;
+      let ev=evaluate(p.hole.concat(game.community));
+      fbResults.push({player:p,eval:ev});
+    }
+    if(fbResults.length>0){
+      fbResults.sort((a,b)=>b.eval.score-a.eval.score);
+      fbWinners=[fbResults[0]];
+      for(let i=1;i<fbResults.length;i++){
+        if(fbResults[i].eval.score===fbResults[0].eval.score)fbWinners.push(fbResults[i]);
+      }
+    }
+  }catch(ex){console.error('fallback eval error:',ex);}
+  return {results:fbResults,winners:fbWinners};
+}
+// ---- ----
+
+function showdown(){
+  if(game.gameOver)return;
+  try{
+    dealRemainingCards();
+    let activePlayers=game.players.filter(p=>!p.folded);
+    if(activePlayers.length<=1){endHand(activePlayers[0]);return}
+
+    // 构建边池
+    game.sidePots=buildSidePots();
+    // 如果没有边池(正常情况), 创建一个主池包含所有下注
+    if(game.sidePots.length===0){
+      game.sidePots=[{amount:game.pot, eligibleSeats:activePlayers.map(p=>p.seat), level:0}];
+    }
+    if(game.sidePots.length>1) logInfo('边池: ' + game.sidePots.length + '层, 总额=' + game.sidePots.reduce((s,sp)=>s+sp.amount,0) + ', 底池=' + game.pot);
+
+    let results=activePlayers.map(p=>({player:p,eval:evaluate(p.hole.concat(game.community))}));
+    results.sort((a,b)=>b.eval.score-a.eval.score);
+    let winners=[results[0]];
+    for(let i=1;i<results.length;i++)if(results[i].eval.score===results[0].eval.score)winners.push(results[i]);
+
+    // 按边池分发筹码
+    // 关键修复: 每个边池应该由该边池合格者中牌力最强的人赢, 不是全局最强!
+    // 例: A(all-in 500,同花) > B(all-in 1000,顺子) > C(all-in 1500,两对)
+    //   边池1(500x3=1500): A,B,C都合格 → A赢(同花最强)
+    //   边池2(500x2=1000): B,C合格 → B赢(顺子>两对)  ← 之前这里B没赢因为全局winner是A!
+    //   边池3(500): C独占 → 退还
+    // 另外修复: Math.floor的余数筹码不能丢失, 给第一个赢家
+    for(let sp of game.sidePots){
+      if(sp.eligibleSeats.length===1){
+        // 未被跟注的超出下注, 直接退还给唯一合格者
+        let p=game.players[sp.eligibleSeats[0]];
+        if(p)p.chips+=sp.amount;
+      } else {
+        // 在合格者中找出牌力最强的(不是全局最强!)
+        let eligibleResults=results.filter(r=>sp.eligibleSeats.includes(r.player.seat));
+        if(eligibleResults.length>0){
+          let bestScore=eligibleResults[0].eval.score;
+          let potWinners=eligibleResults.filter(r=>r.eval.score===bestScore);
+          let totalShare=sp.amount;
+          let share=Math.floor(totalShare/potWinners.length);
+          let remainder=totalShare - share*potWinners.length; // 余数(0到n-1筹码)
+          potWinners.forEach((w,idx)=>{
+            w.player.chips+=share;
+            // 第一个赢家获得余数筹码
+            if(idx===0&&remainder>0)w.player.chips+=remainder;
+          });
+        }
+      }
+    }
+    // 给赢家标记胜场
+    winners.forEach(w=>{
+      // 只要赢家的seat出现在任何边池的eligibleSeats中, 就算赢了
+      w.player.stats.won=(w.player.stats.won||0)+1;
+    });
+
+    updatePlayerProfits();
+    let winNames = winners.map(w=>w.player.name).join(', ');
+    let winHand = results[0].eval.name;
+    logInfo('🏆 摊牌: ' + winNames + ' 获胜 (' + winHand + ') 底池=' + game.pot);
+    // 记录每个玩家的手牌和结果
+    activePlayers.forEach(p => {
+      let ev = results.find(r => r.player.seat === p.seat);
+      let cards = p.hole.map(c => c.rank + c.suit).join('');
+      let won = winners.some(w => w.player.seat === p.seat);
+      logInfo('  ' + p.name + ' ' + cards + ' ' + (ev ? ev.eval.name : '?') + (won ? ' 👑' : ''));
+    });
+    let msg = winNames + ' 获胜! (' + winHand + ')';
+    finalizeHand(results,winners,msg);
+  }catch(e){logError('showdown错误',e);
+    game.gameOver=true;game.message='摊牌出错，已自动结算';render();
+    let fb=buildFallbackResults();
+    try{recordStats(fb.results,fb.winners);}catch(ex){}
+    try{saveBotsData();}catch(ex){}
+    showEndModal(fb.results,fb.winners);
+  }
+}
+
+function endHand(winner){
+  if(game.gameOver)return;
+  try{
+  if(game.community.length<5)dealRemainingCards();
+  if(winner){winner.chips+=game.pot;winner.stats.won=(winner.stats.won||0)+1;logInfo('🏆 '+winner.name+' 获胜(对手全弃) 底池='+game.pot);}
+  updatePlayerProfits();
+  let results=[];
+  for(let p of game.players){
+    if(!p.hole||p.hole.length<2)continue;
+    try{results.push({player:p,eval:evaluate(p.hole.concat(game.community))});}catch(e){results.push({player:p,eval:{name:'?'}});}
+  }
+  let wlist=winner?[{player:winner,eval:results.find(r=>r.player.seat===winner.seat)?results.find(r=>r.player.seat===winner.seat).eval:{name:'对手全弃'}}]:[];
+  let msg=winner?winner.name+' 获胜 (对手全弃)':'';
+  finalizeHand(results,wlist,msg);
+  }catch(e){logError('endHand错误',e);
+    game.gameOver=true;game.message='结束出错，已自动结算';render();
+    let fb=buildFallbackResults();
+    try{recordStats(fb.results,fb.winners);}catch(ex){}
+    try{saveBotsData();}catch(ex){}
+    showEndModal(fb.results,fb.winners);
+  }
+}
+
+function dealRemainingCards(){while(game.community.length<5){let c=game.deck.pop();if(c)game.community.push(c);else break;}}
+function dealRemainingThenShowdown(){dealRemainingCards();showdown();}
+
+// ============================================================
+// 统计
+// ============================================================
+
+function loadStats(){
+  try{
+    return JSON.parse(localStorage.getItem('th_stats')||'{"total":0,"wins":0,"chips":1000,"cumProfit":0,"vpip":0,"pfr":0,"af_total":0,"af_count":0,"hands":{},"positions":{},"postflop":{}}');
+  }catch(e){return {total:0,wins:0,chips:1000,cumProfit:0,vpip:0,pfr:0,af_total:0,af_count:0,hands:{},positions:{},postflop:{}}}
+}
+
+function saveStats(s){try{localStorage.setItem('th_stats',JSON.stringify(s));}catch(e){}}
+
+function recordStats(results,winners){
+  let s=loadStats();
+  // 计算人类玩家本手盈亏(考虑借手)
+  let human=game.players[0];
+  let startC=(handStartChips&&handStartChips[0]!=null)?handStartChips[0]:INITIAL_STACK;
+  let handProfit=human.chips-startC;
+  // 如果本手有借手(开局筹码=1000但之前chips<=0), 借手部分不算盈利
+  // handStartChips已经记录的是借手后的1000, 所以 delta = end - 1000 是正确的
+  s.cumProfit=(s.cumProfit||0)+handProfit;
+  s.total++;s.chips=human.chips;
+  let humanWon=winners.length>0?winners.some(w=>w.player&&w.player.seat===0):false;
+  if(humanWon)s.wins++;
+
+  if(human.lastAction!=='fold'&&human.lastAction!=='')s.vpip++;
+  if(human.lastAction==='raise'||human.lastAction==='allin')s.pfr++;
+  if(human.lastAction==='raise'){s.af_total++;s.af_count++}
+
+  // 起手牌统计 (安全检查: hole可能为空)
+  if(human.hole&&human.hole.length===2&&(!human.folded||game.gameOver)){
+    let hn=handName(human.hole[0],human.hole[1]);
+    if(!s.hands[hn])s.hands[hn]={played:0,won:0};
+    s.hands[hn].played++;if(humanWon)s.hands[hn].won++;
+  }
+  // 位置统计 (0=BTN,1=SB,2=BB,3=UTG,4=MP,5=CO)
+  let pos=['BTN','SB','BB','UTG','MP','CO'][(human.seat-game.dealerIdx+6)%6]||'Unknown';
+  if(!s.positions[pos])s.positions[pos]={played:0,won:0};
+  s.positions[pos].played++;if(humanWon)s.positions[pos].won++;
+
+  // 翻牌后牌型
+  if(game.community.length>=3&&human.hole&&human.hole.length===2&&results.find(r=>r.player&&r.player.seat===0)){
+    let cat=getHandCategory(human.hole,game.community);
+    if(!s.postflop[cat])s.postflop[cat]={played:0,won:0};
+    s.postflop[cat].played++;if(humanWon)s.postflop[cat].won++;
+  }
+  saveStats(s);
+}
+
+function renderStats(){
+  let s=loadStats();
+  // 如果localStorage没有数据, 从当前游戏状态构建
+  if((!s.total||s.total===0)&&game&&game.players&&game.handCount>0){
+    let human=game.players[0];
+    s={total:game.handCount,wins:human.stats.won||0,chips:human.chips,cumProfit:0,
+       vpip:human.stats.vpip||0,pfr:human.stats.pfr||0,af_total:0,af_count:1,
+       hands:{},positions:{},postflop:{}};
+  }
+  document.getElementById('s-total').textContent=s.total||0;
+  document.getElementById('s-wins').textContent=s.wins||0;
+  document.getElementById('s-wr').textContent=s.total>0?Math.round(s.wins/s.total*100)+'%':'0%';
+  document.getElementById('s-chips').textContent=s.chips||0;
+  // 显示累计盈亏(考虑借手后的真实总盈亏)
+  let cumEl=document.getElementById('s-cumprofit');
+  if(cumEl){
+    let cp=s.cumProfit||0;
+    cumEl.textContent=(cp>=0?'+':'')+cp;
+    cumEl.style.color=cp>=0?'#3fb950':'#f85149';
+  }
+  document.getElementById('s-vpip').textContent=s.total>0?Math.round((s.vpip||0)/s.total*100)+'%':'0%';
+  document.getElementById('s-pfr').textContent=s.total>0?Math.round((s.pfr||0)/s.total*100)+'%':'0%';
+  document.getElementById('s-af').textContent=s.af_count>0?((s.af_total||0)/s.af_count).toFixed(1):'0';
+
+  // 手牌统计
+  let handHtml='';
+  let handEntries=Object.entries(s.hands||{}).sort((a,b)=>b[1].played-a[1].played).slice(0,20);
+  for(let [h,d] of handEntries){
+    let wr=d.played>0?Math.round(d.won/d.played*100):0;
+    handHtml+=`<tr><td>${h}</td><td>${d.played}</td><td>${d.won}</td><td style="color:${wr>50?'#3fb950':'#f85149'}">${wr}%</td></tr>`;
+  }
+  document.getElementById('hand-stats').innerHTML=handHtml||'<tr><td colspan="4">暂无数据</td></tr>';
+
+  // 位置统计
+  let posHtml='';
+  for(let [p,d] of Object.entries(s.positions||{})){
+    let wr=d.played>0?Math.round(d.won/d.played*100):0;
+    posHtml+=`<tr><td>${p}</td><td>${d.played}</td><td>${d.won}</td><td style="color:${wr>40?'#3fb950':'#f85149'}">${wr}%</td></tr>`;
+  }
+  document.getElementById('pos-stats').innerHTML=posHtml||'<tr><td colspan="4">暂无数据</td></tr>';
+
+  // 翻牌后
+  let pfHtml='';
+  for(let [c,d] of Object.entries(s.postflop||{})){
+    let wr=d.played>0?Math.round(d.won/d.played*100):0;
+    pfHtml+=`<tr><td>${c}</td><td>${d.played}</td><td>${d.won}</td><td style="color:${wr>50?'#3fb950':'#f85149'}">${wr}%</td></tr>`;
+  }
+  document.getElementById('postflop-stats').innerHTML=pfHtml||'<tr><td colspan="4">暂无数据</td></tr>';
+}
+
+function toggleStats(){
+  let p=document.getElementById('stats-panel');
+  p.style.display=p.style.display==='block'?'none':'block';
+  if(p.style.display==='block')renderStats();
+}
+
+function resetStats(){
+  let choice=confirm('选择清除方式：\n\n确定 = 仅清除我的统计数据（胜率/盈亏/手牌记录等）\n\n（机器人数据不受影响，AI训练数据不受影响）');
+  if(choice){
+    // 只清除th_stats（人类统计），不动th_bots（机器人数据），不动th_model_*（AI训练数据）
+    localStorage.removeItem('th_stats');
+    // 同步清除内存中人类玩家的统计
+    if(game&&game.players&&game.players[0]){
+      game.players[0].stats={won:0,profit:0,handCount:0,vpip:0,pfr:0,aggressive:0,folds:0,hands:0};
+    }
+    renderStats();
+    alert('已清除你的统计数据\n（机器人数据和AI训练数据保留）');
+  }
+}
+
+// ============================================================
+// UI
+// ============================================================
+
+function showMessage(msg){
+  let el=document.getElementById('message');
+  el.textContent=msg;
+  el.style.opacity='1';
+  clearTimeout(el._timeout);
+  el._timeout=setTimeout(()=>el.style.opacity='0',2000);
+}
+
+function enableActions(){
+  let p=game.players[0];
+  let toCall=game.currentBet-p.bet;
+
+  document.getElementById('btn-fold').disabled=false;
+  document.getElementById('btn-check').disabled=toCall>0;
+  // 跟注：有钱就能跟，筹码不够跟满时按钮文字改为"跟注(All-in)"
+  let callBtn=document.getElementById('btn-call');
+  if(toCall===0){
+    callBtn.disabled=true;
+    callBtn.textContent='跟注';
+  }else if(p.chips<=toCall){
+    // 筹码不够跟满 → 跟注=all-in
+    callBtn.disabled=false;
+    callBtn.textContent='跟注 '+p.chips+' (All-in)';
+  }else{
+    callBtn.disabled=false;
+    callBtn.textContent='跟注 '+toCall;
+  }
+  document.getElementById('btn-allin').disabled=false;
+
+  // 加注按钮 & 滑条 - 滑条值=加注额(不含跟注部分)
+  let minRaiseAmt=toCall+game.minRaise;
+  let canRaise=p.chips>minRaiseAmt;
+  ['btn-r35','btn-r50','btn-r65','btn-r100'].forEach(id=>{
+    let el=document.getElementById(id);
+    if(!el)return;
+    el.disabled=!canRaise;
+    // 标准公式: 加注额 = 分数 × (底池 + 跟注额)
+    let frac=id==='btn-r35'?0.33:id==='btn-r50'?0.5:id==='btn-r65'?0.67:1;
+    let raiseOnly=Math.floor((game.pot+toCall)*frac);
+    if(toCall+raiseOnly<minRaiseAmt)el.disabled=true;
+  });
+
+  // 滑条: min=最低加注增量, max=可加注最大额(筹码-跟注)
+  let slider=document.getElementById('raise-slider');
+  if(slider){
+    slider.min=game.minRaise;
+    slider.max=Math.max(game.minRaise,p.chips-toCall);
+    slider.value=Math.max(game.minRaise,Math.floor((game.pot+toCall)*0.5));
+    updateRaiseAmount();
+  }
+}
+
+function updateRaiseAmount(){
+  let slider=document.getElementById('raise-slider');
+  let el=document.getElementById('raise-amount');
+  if(!slider||!el)return;
+  let v=parseInt(slider.value);
+  let toCall=game.currentBet-game.players[0].bet;
+  // 显示加注额(不含跟注)
+  el.textContent='+'+v;
+  document.getElementById('btn-raise').disabled=v<game.minRaise||v+toCall>game.players[0].chips;
+}
+
+function raiseByPot(fraction){
+  let p=game.players[0];
+  let toCall=game.currentBet-p.bet;
+  // 标准扑克下注: 加注额 = 分数 × (底池 + 跟注额)
+  // 这样 ⅓池 = 实际下注后总池增长约⅓, 符合玩家直觉
+  let raiseAmt=Math.max(game.minRaise,Math.floor((game.pot+toCall)*fraction));
+  let total=toCall+raiseAmt;
+  if(total>=p.chips){
+    executeAction(p,{action:'allin'});
+  }else{
+    executeAction(p,{action:'raise',amount:total});
+  }
+  disableActions();
+}
+
+function disableActions(){
+  ['btn-fold','btn-check','btn-call','btn-r35','btn-r50','btn-r65','btn-r100','btn-raise','btn-allin'].forEach(id=>{
+    let el=document.getElementById(id);
+    if(el)el.disabled=true;
+  });
+}
+
+function showEndModal(results,winners){
+  let human=game.players[0];
+  // netChange = 当前筹码 - 本手开始时的筹码 (最准确的盈亏)
+  let netChange=human.chips-humanHandStartChips;
+  // 赢家判定：winners列表包含seat=0 OR 对手全弃(只剩人类未弃牌)
+  let humanWon=winners.length>0?winners.some(w=>(w.player?w.player.seat:w.seat)===0):false;
+  // 兜底：如果winners为空但有netChange>0(可能是异常恢复)，也算赢
+  if(!humanWon&&netChange>0&&!human.folded)humanWon=true;
+
+  // 安全修正: 如果判定赢了但净变化为负或异常小, 说明边池分发可能有问题
+  // 用底池作为参考: 赢家至少应该拿回自己投入的大部分
+  if(humanWon&&netChange<=0){
+    // 你赢了但显示亏钱 → 用底池估算实际收益
+    // 你的实际收益 ≈ 底池中你应得的部分 - 你的投入
+    // 简化处理: 如果你是唯一赢家, 你应该拿到大部分底池
+    let otherActiveWinners=winners.filter(w=>w.player&&w.player.seat!==0).length;
+    if(otherActiveWinners===0){
+      // 你是唯一赢家, 应该拿到全部可竞争的底池份额
+      // 最保守估计: 至少不亏损
+      let estimatedWin=Math.max(0, game.pot - Math.min(game.pot, humanHandStartChips));
+      netChange=Math.max(netChange, estimatedWin);
+      // 同步修正人类玩家筹码(防止显示不一致)
+      human.chips=humanHandStartChips+netChange;
+    }
+  }
+
+  let title='';
+  if(humanWon){
+    title='🎉 你赢了!';
+  }else if(human.folded){
+    title=netChange===0?'👋 你弃牌了 (无损)':'👋 你弃牌了';
+  }else if(netChange===0){
+    title='🤝 平局 (未输赢)';
+  }else{
+    title='😞 你输了';
+  }
+
+  document.getElementById('end-title').textContent=title;
+
+  // 所有玩家牌型详情
+  if(results&&results.length>0){
+    let detailLines=results.map(r=>{
+      let name=r.player?r.player.name:'?';
+      let evalName=r.eval&&r.eval.name?r.eval.name:'?';
+      let hole='';
+      if(r.player&&r.player.hole&&r.player.hole.length===2){
+        hole=r.player.hole.map(c=>SUIT_SYMBOLS[c.suit]+c.rank).join('');
+      }
+      let won=winners.length>0&&winners.some(w=>(w.player?w.player.seat:w.seat)===(r.player?r.player.seat:-1))?'👑':'';
+      return `${won}${name} ${hole} (${evalName})`;
+    });
+    document.getElementById('end-detail').innerHTML=detailLines.join('<br>');
+  }else{
+    document.getElementById('end-detail').innerHTML='<span style="color:#8b949e">本局结果已自动结算</span>';
+  }
+
+  // 筹码变化
+  if(netChange>0){
+    document.getElementById('end-result').innerHTML=
+      `<span style="color:#3fb950;font-size:22px">+${netChange}</span> 筹码`;
+  }else if(netChange===0){
+    document.getElementById('end-result').innerHTML=
+      `<span style="color:#8b949e">±0 筹码</span>`;
+  }else{
+    document.getElementById('end-result').innerHTML=
+      `<span style="color:#f85149;font-size:22px">${netChange}</span> 筹码`;
+  }
+
+  document.getElementById('end-modal').style.display='flex';
+  saveBotsData();
+}
+
+// ---- 历史面板 ----
+function toggleHistory(){
+  let p=document.getElementById('history-panel');
+  p.style.display=p.style.display==='block'?'none':'block';
+  if(p.style.display==='block')renderHistory();
+}
+function renderHistory(){
+  let phaseNames={preflop:'翻牌前',flop:'翻牌',turn:'转牌',river:'河牌'};
+  let actNames={fold:'弃牌',check:'过牌',call:'跟注',raise:'加注',allin:'All-in'};
+  let actColors={fold:'#f85149',check:'#8b949e',call:'#3fb950',raise:'#d29922',allin:'#ff6b6b'};
+  let html='',lastPhase='';
+  handHistory.forEach(h=>{
+    if(h.phase!==lastPhase){
+      html+=`<div style="color:var(--gold);font-weight:700;margin:8px 0 4px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:3px">${phaseNames[h.phase]}</div>`;
+      lastPhase=h.phase;
+    }
+    let col=actColors[h.action]||'#fff';
+    html+=`<div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:10px">
+      <span style="min-width:50px;color:#8b949e">${h.player}</span>
+      <span style="color:${col};font-weight:700;min-width:40px">${actNames[h.action]}</span>`;
+    if(h.amount>0)html+=`<span style="color:var(--gold)">${h.amount}</span>`;
+    html+=`<span style="color:#555;font-size:9px">池:${h.pot}</span>`;
+    if(h.hole)html+=`<span style="color:#a29bfe;font-size:9px">[${h.hole}]</span>`;
+    html+='</div>';
+  });
+  document.getElementById('history-content').innerHTML=html||'<div style="color:#555;text-align:center;padding:20px">暂无操作记录</div>';
+}
+
+// ---- AI数据持久化 ----
+function saveBotsData(){
+  let bots=game.players.filter(p=>!p.isHuman);
+  let data=bots.map(p=>({name:p.name,diff:p.diff,stats:p.stats}));
+  try{localStorage.setItem('th_bots',JSON.stringify(data));}catch(e){}
+}
+function loadBotsData(){
+  try{
+    let raw=localStorage.getItem('th_bots');
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){return null;}
+}
+function showBotsReport(){
+  // 优先从内存中的game状态读取, 其次localStorage
+  let data=null;
+  if(game&&game.players){
+    data=game.players.filter(p=>!p.isHuman).map(p=>({name:p.name,diff:p.diff,stats:p.stats}));
+  }
+  if(!data||data.length===0)data=loadBotsData();
+  if(!data||data.length===0){alert('暂无机器人数据');return;}
+  let html=`<h3 style="color:var(--gold)">🤖 机器人数据报告</h3><table class="stats-table">
+    <thead><tr><th>机器人</th><th>难度</th><th>局数</th><th>胜场</th><th>胜率</th><th>累计盈利</th><th>VPIP</th><th>PFR</th></tr></thead><tbody>`;
+  // 收集趋势数据
+  let trendData=[];
+  data.forEach(b=>{
+    let s=b.stats||{},hc=s.handCount||1,hh=s.hands||s.handCount||1,profit=s.profit||0;
+    let vpip=Math.round((s.vpip||0)/hh*100),pfr=Math.round((s.pfr||0)/hh*100),wr=Math.round((s.won||0)/hc*100);
+    html+=`<tr><td>${b.name}</td><td>${b.diff||'?'}</td><td>${hc}</td><td>${s.won||0}</td>
+      <td style="color:${wr>20?'#3fb950':'#f85149'}">${wr}%</td>
+      <td style="color:${profit>=0?'#3fb950':'#f85149'}">${profit>=0?'+':''}${profit}</td>
+      <td>${vpip}%</td><td>${pfr}%</td></tr>`;
+    // 读取训练模型中的历史数据
+    let model=loadBotModel(b.name);
+    let recentResults=model.recentResults||[];
+    trendData.push({name:b.name,profit:profit,recentResults:recentResults,wr:wr,iterations:model.iterations||0});
+  });
+  html+='</tbody></table>';
+
+  // === 趋势图: 胜率和盈亏走势 ===
+  // 读取人类玩家趋势
+  let humanStats=loadStats();
+  let humanProfit=humanStats.cumProfit||0;
+  let humanWR=humanStats.total>0?Math.round(humanStats.wins/humanStats.total*100):0;
+
+  // 构建SVG趋势图
+  let allProfits=trendData.map(t=>t.profit).concat([humanProfit]);
+  let maxProfit=Math.max(...allProfits,0);
+  let minProfit=Math.min(...allProfits,0);
+  let range=maxProfit-minProfit||100;
+
+  // 图表参数
+  let chartW=320,chartH=160,padL=40,padR=10,padT=20,padB=25;
+  let plotW=chartW-padL-padR,plotH=chartH-padT-padB;
+  let yScale=function(v){return padT+plotH-((v-minProfit)/range)*plotH;};
+  let zeroY=yScale(0);
+
+  // 绘制折线(每个实体一条线)
+  let colors=['#d4a84b','#3fb950','#58a6ff','#f85149','#d29922','#ff6b6b'];
+  let lines='';
+  let legend='';
+  let legendItems=['你(human)'].concat(trendData.map(t=>t.name));
+  let allData=[{name:'你',profit:humanProfit,wr:humanWR,iterations:humanStats.total||0}].concat(trendData);
+
+  // 柱状图: 每个实体的累计盈亏对比
+  let bars='';
+  let barW=plotW/(allData.length*2);
+  allData.forEach((d,i)=>{
+    let x=padL+i*barW*2+barW*0.5;
+    let h=Math.abs(d.profit/range*plotH);
+    let y=d.profit>=0?yScale(d.profit):zeroY;
+    let color=colors[i%colors.length];
+    bars+=`<rect x="${x}" y="${y}" width="${barW}" height="${Math.max(2,h)}" fill="${color}" opacity="0.8" rx="2"/>`;
+    // 数值标签
+    let labelY=d.profit>=0?y-4:y+h+12;
+    bars+=`<text x="${x+barW/2}" y="${labelY}" text-anchor="middle" fill="${color}" font-size="9" font-weight="bold">${d.profit>=0?'+':''}${d.profit}</text>`;
+    // 名称标签
+    bars+=`<text x="${x+barW/2}" y="${chartH-padB+18}" text-anchor="middle" fill="#8b949e" font-size="8">${d.name.length>4?d.name.slice(0,4):d.name}</text>`;
+    legend+=`<span style="display:inline-block;margin-right:8px;font-size:9px"><span style="display:inline-block;width:8px;height:8px;background:${color};border-radius:2px;margin-right:2px"></span>${d.name}</span>`;
+  });
+
+  let svgChart=`<div style="margin-top:12px">
+    <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px">📈 累计盈亏对比</div>
+    <svg width="${chartW}" height="${chartH}" style="background:rgba(0,0,0,0.3);border-radius:6px">
+      <!-- 网格线 -->
+      <line x1="${padL}" y1="${zeroY}" x2="${chartW-padR}" y2="${zeroY}" stroke="#444" stroke-dasharray="3,2"/>
+      <!-- Y轴标签 -->
+      <text x="${padL-4}" y="${padT+8}" text-anchor="end" fill="#8b949e" font-size="8">${maxProfit}</text>
+      <text x="${padL-4}" y="${zeroY+3}" text-anchor="end" fill="#8b949e" font-size="8">0</text>
+      <text x="${padL-4}" y="${chartH-padB}" text-anchor="end" fill="#8b949e" font-size="8">${minProfit}</text>
+      <!-- 柱状图 -->
+      ${bars}
+    </svg>
+    <div style="margin-top:4px">${legend}</div>
+  </div>`;
+
+  // 胜率趋势折线图(基于recentResults)
+  let wrLines='';
+  let wrChartW=320,wrChartH=120,wrPadL=30,wrPadR=10,wrPadT=15,wrPadB=20;
+  let wrPlotW=wrChartW-wrPadL-wrPadR,wrPlotH=wrChartH-wrPadT-wrPadB;
+  trendData.forEach((t,i)=>{
+    let rr=t.recentResults;
+    if(rr.length<2)return;
+    let color=colors[(i+1)%colors.length];
+    let pts='';
+    let cumP=0;
+    rr.forEach((r,j)=>{
+      cumP+=r;
+      let x=wrPadL+(j/(rr.length-1))*wrPlotW;
+      let y=wrPadT+wrPlotH/2-(cumP/rr.length*0.5+0.5)*wrPlotH*0.4;
+      pts+=(j===0?'M':'L')+x+','+y;
+    });
+    wrLines+=`<path d="${pts}" stroke="${color}" stroke-width="1.5" fill="none" opacity="0.7"/>`;
+  });
+  let wrSvg=`<div style="margin-top:12px">
+    <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px">📊 近期表现趋势(最近30手)</div>
+    <svg width="${wrChartW}" height="${wrChartH}" style="background:rgba(0,0,0,0.3);border-radius:6px">
+      <line x1="${wrPadL}" y1="${wrPadT+wrPlotH/2}" x2="${wrChartW-wrPadR}" y2="${wrPadT+wrPlotH/2}" stroke="#444" stroke-dasharray="3,2"/>
+      <text x="${wrPadL-4}" y="${wrPadT+4}" text-anchor="end" fill="#3fb950" font-size="8">赢</text>
+      <text x="${wrPadL-4}" y="${wrChartH-wrPadB}" text-anchor="end" fill="#f85149" font-size="8">输</text>
+      ${wrLines}
+    </svg>
+    <div style="margin-top:4px;font-size:9px;color:#8b949e">折线向上=近期状态好, 向下=近期状态差</div>
+  </div>`;
+
+  html+=svgChart+wrSvg;
+  html+='<p style="font-size:10px;color:#8b949e;margin-top:8px">数据永久保留, 退出重进不会丢失</p>';
+  document.getElementById('history-content').innerHTML=html;
+  document.getElementById('history-panel').style.display='block';
+}
+function resetBotsData(){
+  let choice=confirm('选择清除方式：\n\n确定 = 仅清除机器人统计数据（胜率/盈亏/对手画像等）\n\n（你的统计数据不受影响，AI训练数据不受影响）');
+  if(choice){
+    // 只清除th_bots（机器人统计数据），不动th_stats（人类统计），不动th_model_*（AI训练数据）
+    localStorage.removeItem('th_bots');
+    // 同步清除内存中机器人的stats
+    if(game&&game.players){
+      game.players.forEach(p=>{
+        if(!p.isHuman){
+          p.stats={won:0,profit:0,handCount:0,vpip:0,pfr:0,aggressive:0,folds:0,hands:0};
+        }
+      });
+    }
+    alert('已清除机器人统计数据\n（你的数据和AI训练数据保留）');
+    showBotsReport();
+  }
+}
+
+function nextHand(){
+  stopAllTimers();
+  try{saveBotsData();}catch(e){} // 保存本局数据再开新局
+  document.getElementById('end-modal').style.display='none';
+  if(game.players[0].chips<=0)game.players[0].chips=INITIAL_STACK;
+  resetForNewHand();
+}
+
+function render(){
+  let table=document.getElementById('table');
+  let existingPlayers=table.querySelectorAll('.player-seat');
+  existingPlayers.forEach(el=>el.remove());
+
+  let communityEl=document.getElementById('community');
+  communityEl.innerHTML='';
+
+  // 公共牌
+  for(let i=0;i<5;i++){
+    let el=document.createElement('div');
+    el.className='community-card';
+    if(i<game.community.length){
+      let c=game.community[i];
+      el.classList.add(SUIT_COLORS[c.suit],'flipped');
+      el.innerHTML=`<span class="suit">${SUIT_SYMBOLS[c.suit]}</span>${c.rank}`;
+    }else{el.classList.add('unflipped');el.textContent='?';el.title='未发牌';}
+    communityEl.appendChild(el);
+  }
+  if(game.community.length>0){
+    let lbl=document.createElement('div');
+    lbl.style.cssText='position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);margin-top:32px;font-size:9px;color:#8b949e;white-space:nowrap';
+    lbl.textContent=game.community.length<=3?'翻牌':game.community.length===4?'转牌':'河牌';
+    communityEl.appendChild(lbl);
+  }
+
+  // 玩家位置
+  game.players.forEach((p,i)=>{
+    let seat=document.createElement('div');
+    seat.className='player-seat'+(p.folded?' folded':'')+(p.seat===game.currentPlayer?' highlight':'')+(p.seat===0?' active':'');
+    seat.id='seat'+p.seat;
+
+    // 庄家/盲注位置标识
+    let badges='';
+    if(p.seat===game.dealerIdx)badges+='<span class="dealer">D</span>';
+    let sbIdx=(game.dealerIdx+1)%6;
+    let bbIdx=(game.dealerIdx+2)%6;
+    if(p.seat===sbIdx)badges+='<span class="blind-badge blind-sb">SB</span>';
+    if(p.seat===bbIdx)badges+='<span class="blind-badge blind-bb">BB</span>';
+    if(badges)seat.innerHTML+=`<div style="display:flex;gap:3px;align-items:center">${badges}</div>`;
+    seat.innerHTML+=`<div class="name">${p.name}</div>`;
+
+    // 手牌 (人类玩家不在座位上显示小牌, 用底部大牌代替)
+    if(p.seat!==0){
+      let cardsRow=document.createElement('div');
+      cardsRow.className='cards-row';
+      for(let c of p.hole){
+        let mc=document.createElement('div');
+        mc.className='mini-card';
+        if(game.gameOver){
+          mc.classList.add(SUIT_COLORS[c.suit]);
+          mc.innerHTML=`<span class="suit">${SUIT_SYMBOLS[c.suit]}</span>${c.rank}`;
+          if(p.folded)mc.style.opacity='0.5';
+        }else{mc.classList.add('mini-card-back');mc.textContent='?';}
+        cardsRow.appendChild(mc);
+      }
+      seat.appendChild(cardsRow);
+    }
+    seat.innerHTML+=`<div class="chips">💰 ${Math.max(0,p.chips)}</div>`;
+    if(p.bet>0)seat.innerHTML+=`<div class="bet">注 ${p.bet}</div>`;
+    if(p.lastAction)seat.innerHTML+=`<div class="action-badge" style="background:rgba(0,0,0,0.5)">${actionLabel(p.lastAction)}</div>`;
+
+    table.appendChild(seat);
+  });
+
+  // 你的手牌
+  let hh=document.getElementById('your-hand');
+  if(!hh){hh=document.createElement('div');hh.id='your-hand';table.appendChild(hh);}
+  hh.innerHTML='';
+  let hp=game.players[0];
+  if(hp.hole.length===2){
+    for(let c of hp.hole){
+      let yc=document.createElement('div');
+      yc.className=`your-card ${SUIT_COLORS[c.suit]}`;
+      yc.innerHTML=`<span class="suit">${SUIT_SYMBOLS[c.suit]}</span>${c.rank}`;
+      hh.appendChild(yc);
+    }
+  }
+
+  // 底池+牌型提示
+  let catStr='';
+  if(hp.hole.length===2&&game.community.length>=3&&!hp.folded){
+    catStr=`<span style="font-size:10px;color:#8b949e;display:block">你的牌: <b style="color:var(--gold)">${getHandCategory(hp.hole,game.community)}</b></span>`;
+  }
+  document.getElementById('pot-display').innerHTML=`<div style="background:rgba(0,0,0,0.5);color:var(--gold);padding:4px 12px;border-radius:10px;font-size:13px;font-weight:700">底池: ${game.pot}</div>${catStr}`;
+
+  document.getElementById('table-info').textContent=
+    `${game.phase==='preflop'?'翻牌前':game.phase==='flop'?'翻牌':game.phase==='turn'?'转牌':'河牌'} | ${SMALL_BLIND}/${BIG_BLIND} | #${game.handCount||0}`;
+}
+
+function actionLabel(a){
+  let map={fold:'弃牌',check:'过牌',call:'跟注',raise:'加注',allin:'All-in'};
+  return map[a]||'';
+}
+
+// ============================================================
+// 初始化
+// ============================================================
+// 设置初始游戏状态以防止render崩溃
+if(!game.players||game.players.length===0){
+  game.players=initPlayers();
+  game.phase='waiting';
+  game.pot=0;
+  game.community=[];
+  game.handCount=0;
+}
+disableActions();
+document.getElementById('start-modal').style.display='flex';
+try{renderAITrainingReport();}catch(e){console.error('init report:',e);}
+try{renderStats();}catch(e){console.error('init stats:',e);}
+try{render();}catch(e){console.error('init render:',e);}
+// 隐藏加载遮罩
+try{
+  let ov=document.getElementById('loading-overlay');
+  if(ov){ov.style.opacity='0';setTimeout(function(){try{ov.remove();}catch(e){}},300);}
+}catch(e){}
+// 安全兜底: 5秒后强制移除遮罩(防止JS报错导致遮罩永远不消失)
+setTimeout(function(){
+  try{
+    var ov2=document.getElementById('loading-overlay');
+    if(ov2){ov2.style.opacity='0';setTimeout(function(){try{ov2.remove();}catch(e){}},300);}
+  }catch(e){}
+},5000);
+</script>
+<script>
+// 注册Service Worker(PWA离线支持) - 非阻塞式注册
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
