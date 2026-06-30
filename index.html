@@ -1976,7 +1976,6 @@ function collectGameData() {
 
 function uploadGameData() {
   try {
-    if (!_dataConfig.token || !_dataConfig.repo) return; // 没配置就不上传
     let data = collectGameData();
     if (!data || data.handCount === 0) return;
 
@@ -1985,8 +1984,20 @@ function uploadGameData() {
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
 
+    // 优化: 每5局上传一次, 不是每局都传(减少数据量)
+    if (data.handCount % 5 !== 0) return;
+
     let title = '对局数据 #' + data.handCount + ' - ' + data.timestamp.substring(0, 19);
-    let body = '```json\n' + JSON.stringify(data, null, 2) + '\n```';
+    // 精简数据: 去掉recentHands减少体积
+    let compact = {
+      ts: data.timestamp,
+      hc: data.handCount,
+      ps: data.playerStats,
+      bs: data.botsSummary,
+      bt: data.botTraining,
+      cr: data.currentResult
+    };
+    let body = '```json\n' + JSON.stringify(compact) + '\n```';
 
     fetch('https://api.github.com/repos/' + _dataConfig.repo + '/issues', {
       method: 'POST',
