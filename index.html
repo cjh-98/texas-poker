@@ -2135,8 +2135,8 @@ function uploadGameData() {
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
 
-    // 优化: 每5局上传一次, 不是每局都传(减少数据量)
-    if (data.handCount % 5 !== 0) return;
+    // 每1局上传一次, 方便测试 (正式版可改回5局)
+    if (data.handCount % 1 !== 0) return;
 
     let userName = data.user.userName || '匿名玩家';
     let title = '📊 ' + userName + ' - 对局#' + data.handCount + ' - ' + data.timestamp.substring(0, 19);
@@ -2164,15 +2164,26 @@ function uploadGameData() {
         body: body,
         labels: ['game-data', 'user-' + data.user.userId.substring(0, 15)]
       })
-    }).then(r => r.json()).then(result => {
+    }).then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(result => {
       if (result.number) {
         _uploadedHands++;
         logInfo('对局数据已上传 #' + data.handCount + ' (issue #' + result.number + ')');
+        // 显示上传成功提示
+        showMessage('✅ 数据已上传 #' + result.number);
+      } else if (result.message) {
+        throw new Error(result.message);
       }
     }).catch(e => {
       logWarn('数据上传失败(不影响游戏): ' + (e.message || e));
+      // 显示上传失败提示
+      showMessage('⚠️ 上传失败: ' + (e.message || '未知错误'));
     });
-  } catch(e) {}
+  } catch(e) {
+    logWarn('uploadGameData error: ' + e.message);
+  }
 }
 
 // 批量上传(退出时调用, 一次性上传所有未上传的统计数据)
