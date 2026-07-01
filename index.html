@@ -262,6 +262,7 @@ body{
   <div id="topbar">
     <span class="title">🃏 德州扑克</span>
     <span id="table-info" class="info">盲注 5/10</span>
+    <button onclick="toggleSettings()" title="设置">⚙️ 设置</button>
     <button onclick="toggleStats()">📊 统计</button>
     <button onclick="toggleHistory()">📜 历史</button>
     <button onclick="resetGame()">🔄 重开</button>
@@ -406,6 +407,48 @@ body{
     <button onclick="resetBotsData()" style="background:#500;color:#fff;border:1px solid #700;padding:4px 10px;border-radius:4px;font-size:10px">🗑️ 清除数据</button>
   </div>
   <div id="history-content"></div>
+</div>
+
+<!-- 设置面板 -->
+<div id="settings-panel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:300;overflow-y:auto;display:none;padding:16px;font-size:13px;color:#c9d1d9">
+  <span style="position:absolute;top:10px;right:16px;font-size:26px;color:#e8e8e8;cursor:pointer;z-index:1" onclick="toggleSettings()">✕</span>
+  <h2 style="color:var(--gold);text-align:center;margin-bottom:16px">⚙️ 设置</h2>
+
+  <div style="max-width:400px;margin:0 auto">
+    <!-- 用户标识设置 -->
+    <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.08)">
+      <h3 style="color:var(--gold);margin-bottom:12px;font-size:15px">👤 用户标识</h3>
+      <p style="font-size:11px;color:#8b949e;margin-bottom:12px">设置您的名称, 方便区分不同玩家的对局数据</p>
+
+      <div style="margin-bottom:12px">
+        <label style="display:block;margin-bottom:6px;color:#8b949e;font-size:12px">用户名称</label>
+        <input type="text" id="user-name-input" style="width:100%;padding:10px 12px;border:1px solid var(--gold);border-radius:6px;background:#1a2a1a;color:var(--text);font-size:14px" placeholder="输入您的名称" maxlength="20">
+        <button onclick="saveUserName()" style="margin-top:8px;width:100%;padding:10px;background:linear-gradient(135deg,#1d8a4a,#15703a);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer">💾 保存名称</button>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.3);padding:10px;border-radius:6px;font-size:11px">
+        <div style="color:#8b949e;margin-bottom:4px">用户ID (自动生成, 不可修改)</div>
+        <div style="color:var(--gold);font-family:monospace;word-break:break-all" id="user-id-display">加载中...</div>
+      </div>
+
+      <div style="margin-top:12px;font-size:11px;color:#8b949e">
+        ℹ️ 对局数据上传到GitHub时会附带此标识, 方便区分不同玩家的对局
+      </div>
+    </div>
+
+    <!-- 数据上传设置 -->
+    <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.08)">
+      <h3 style="color:var(--gold);margin-bottom:12px;font-size:15px">📤 数据上传</h3>
+      <div style="font-size:12px;color:#8b949e;margin-bottom:8px">
+        每5局自动上传一次数据到GitHub, 用于AI训练
+      </div>
+      <div style="font-size:11px;color:var(--gold)" id="upload-status">
+        已上传: 0 次
+      </div>
+    </div>
+
+    <button onclick="toggleSettings()" style="width:100%;padding:12px;background:rgba(255,255,255,0.08);color:var(--text);border:1px solid rgba(255,255,255,0.12);border-radius:8px;font-size:14px;cursor:pointer">关闭设置</button>
+  </div>
 </div>
 
 <script>
@@ -1989,11 +2032,46 @@ function _dTk(){
 let _dataConfig = { repo: 'cjh-98/texas-poker-data', token: _dTk() };
 let _uploadedHands = 0;
 
+// 用户标识系统 - 区分不同玩家的对局数据
+function getUserId() {
+  let uid = localStorage.getItem('poker_user_id');
+  if (!uid) {
+    // 生成唯一ID: 时间戳 + 随机字符串
+    uid = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+    localStorage.setItem('poker_user_id', uid);
+  }
+  return uid;
+}
+
+function getUserName() {
+  return localStorage.getItem('poker_user_name') || ('玩家_' + getUserId().substring(5, 10));
+}
+
+function setUserName(name) {
+  if (name && name.trim()) {
+    localStorage.setItem('poker_user_name', name.trim());
+    return true;
+  }
+  return false;
+}
+
+function getDeviceInfo() {
+  let info = {
+    userId: getUserId(),
+    userName: getUserName(),
+    platform: navigator.platform || 'unknown',
+    language: navigator.language || 'unknown',
+    screenSize: (window.screen.width || 0) + 'x' + (window.screen.height || 0)
+  };
+  return info;
+}
+
 function collectGameData() {
   // 收集当前所有游戏数据
   let human = game.players[0];
   let s = loadStats();
   let botsData = loadBotsData() || [];
+  let deviceInfo = getDeviceInfo();
 
   // 收集每个机器人的训练模型摘要
   let botModels = {};
@@ -2011,6 +2089,7 @@ function collectGameData() {
     timestamp: new Date().toISOString(),
     sessionId: _uploadedHands,
     handCount: game.handCount,
+    user: deviceInfo,  // 添加用户标识信息
     playerStats: {
       chips: human.chips,
       totalHands: s.total || 0,
@@ -2059,9 +2138,11 @@ function uploadGameData() {
     // 优化: 每5局上传一次, 不是每局都传(减少数据量)
     if (data.handCount % 5 !== 0) return;
 
-    let title = '对局数据 #' + data.handCount + ' - ' + data.timestamp.substring(0, 19);
+    let userName = data.user.userName || '匿名玩家';
+    let title = '📊 ' + userName + ' - 对局#' + data.handCount + ' - ' + data.timestamp.substring(0, 19);
     // 精简数据: 去掉recentHands减少体积
     let compact = {
+      u: data.user,  // 用户信息
       ts: data.timestamp,
       hc: data.handCount,
       ps: data.playerStats,
@@ -2069,7 +2150,7 @@ function uploadGameData() {
       bt: data.botTraining,
       cr: data.currentResult
     };
-    let body = '```json\n' + JSON.stringify(compact) + '\n```';
+    let body = '**用户**: ' + data.user.userName + '\n**ID**: `' + data.user.userId + '`\n\n```json\n' + JSON.stringify(compact) + '\n```';
 
     fetch('https://api.github.com/repos/' + _dataConfig.repo + '/issues', {
       method: 'POST',
@@ -2081,7 +2162,7 @@ function uploadGameData() {
       body: JSON.stringify({
         title: title,
         body: body,
-        labels: ['game-data']
+        labels: ['game-data', 'user-' + data.user.userId.substring(0, 15)]
       })
     }).then(r => r.json()).then(result => {
       if (result.number) {
@@ -2104,9 +2185,11 @@ function uploadAllData() {
     if (localStorage.getItem('uploaded_summary')) return;
     localStorage.setItem('uploaded_summary', '1');
 
+    let deviceInfo = getDeviceInfo();
     let summary = {
       type: 'session_summary',
       timestamp: new Date().toISOString(),
+      user: deviceInfo,  // 添加用户标识
       userAgent: navigator.userAgent.substring(0, 100),
       totalHands: s.total,
       wins: s.wins,
@@ -2123,6 +2206,7 @@ function uploadAllData() {
       }))
     };
 
+    let userName = deviceInfo.userName || '匿名玩家';
     fetch('https://api.github.com/repos/' + _dataConfig.repo + '/issues', {
       method: 'POST',
       headers: {
@@ -2131,9 +2215,9 @@ function uploadAllData() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        title: '会话汇总 - ' + summary.totalHands + '局 - ' + summary.timestamp.substring(0, 19),
-        body: '```json\n' + JSON.stringify(summary, null, 2) + '\n```',
-        labels: ['session-summary']
+        title: '📈 ' + userName + ' - 会话汇总-' + summary.totalHands + '局 - ' + summary.timestamp.substring(0, 19),
+        body: '**用户**: ' + deviceInfo.userName + '\n**ID**: `' + deviceInfo.userId + '`\n\n```json\n' + JSON.stringify(summary, null, 2) + '\n```',
+        labels: ['session-summary', 'user-' + deviceInfo.userId.substring(0, 15)]
       })
     }).then(r => r.json()).then(result => {
       if (result.number) logInfo('会话汇总已上传 (issue #' + result.number + ')');
@@ -2895,6 +2979,32 @@ function toggleStats(){
   let p=document.getElementById('stats-panel');
   p.style.display=p.style.display==='block'?'none':'block';
   if(p.style.display==='block')renderStats();
+}
+
+function toggleSettings(){
+  let p=document.getElementById('settings-panel');
+  p.style.display=p.style.display==='block'?'none':'block';
+  if(p.style.display==='block'){
+    // 加载用户信息
+    document.getElementById('user-name-input').value=getUserName();
+    document.getElementById('user-id-display').textContent=getUserId();
+    document.getElementById('upload-status').textContent='已上传: ' + _uploadedHands + ' 次';
+  }
+}
+
+function saveUserName(){
+  let input=document.getElementById('user-name-input');
+  let name=input.value.trim();
+  if(!name){
+    alert('请输入有效的名称');
+    return;
+  }
+  if(setUserName(name)){
+    alert('✅ 名称已保存: ' + name + '\n\n对局数据将以此名称标识');
+    document.getElementById('user-id-display').textContent=getUserId();
+  }else{
+    alert('❌ 保存失败, 请重试');
+  }
 }
 
 function resetStats(){

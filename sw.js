@@ -1,4 +1,4 @@
-var CACHE_NAME = 'poker-v3';
+var CACHE_NAME = 'poker-v4';
 var ASSETS = ['./index.html', './manifest.json', './poker_icon.svg'];
 
 self.addEventListener('install', function(e) {
